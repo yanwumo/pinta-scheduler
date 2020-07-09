@@ -1,0 +1,35 @@
+apiVersion: pinta.qed.usc.edu/v1
+kind: PintaJob
+metadata:
+  name: example-pintajob
+spec:
+  type: ps-worker  # ps-worker, mpi, symmetric, image-builder
+  master:
+    spec:
+      containers:
+        - name: test
+          image: ubuntu:latest
+          workingDir: /
+          command:
+            - sh
+            - -c
+            - |
+              echo 'This is PS';
+              sleep 3600;
+          resources:
+            requests:
+              cpu: 35m
+  replica:
+    spec:
+      containers:
+        - name: test
+          image: ubuntu:latest
+          workingDir: /
+          command:
+            - sh
+            - -c
+            - |
+              echo 'This is worker';
+              sleep 3600;
+#  numMasters: 0
+#  numReplicas: 0
