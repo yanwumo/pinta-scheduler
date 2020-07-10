@@ -18,7 +18,7 @@ spec:
               sleep 3600;
           resources:
             requests:
-              cpu: 35m
+              cpu: "8"
   replica:
     spec:
       containers:
@@ -31,5 +31,8 @@ spec:
             - |
               echo 'This is worker';
               sleep 3600;
-#  numMasters: 0
-#  numReplicas: 0
+          resources:
+            requests:
+              cpu: "8"
+  numMasters: 1
+  numReplicas: 2

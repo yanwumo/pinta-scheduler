@@ -408,13 +408,13 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "ps",
-				Replicas: 1,
+				Replicas: pintaJob.Spec.NumMasters,
 				Template: pintaJob.Spec.Master,
 				Policies: nil,
 			},
 			{
 				Name:     "worker",
-				Replicas: 2,
+				Replicas: pintaJob.Spec.NumReplicas,
 				Template: pintaJob.Spec.Replica,
 				Policies: nil,
 			},
@@ -423,13 +423,13 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "master",
-				Replicas: 1,
+				Replicas: pintaJob.Spec.NumMasters,
 				Template: pintaJob.Spec.Master,
 				Policies: nil,
 			},
 			{
 				Name:     "replica",
-				Replicas: 2,
+				Replicas: pintaJob.Spec.NumReplicas,
 				Template: pintaJob.Spec.Replica,
 				Policies: nil,
 			},
@@ -438,7 +438,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "replica",
-				Replicas: 3,
+				Replicas: pintaJob.Spec.NumReplicas,
 				Template: pintaJob.Spec.Replica,
 				Policies: nil,
 			},
@@ -455,17 +455,22 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 	default:
 		return nil
 	}
+	// Calculate total number of replicas
+	var sumReplicas int32 = 0
+	for _, task := range tasks {
+		sumReplicas += task.Replicas
+	}
 	return &volcanov1alpha1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:            pintaJob.Name,
-			Namespace:       pintaJob.Namespace,
+			Name:      pintaJob.Name,
+			Namespace: pintaJob.Namespace,
 			OwnerReferences: []metav1.OwnerReference{
 				*metav1.NewControllerRef(pintaJob, pintav1.SchemeGroupVersion.WithKind("PintaJob")),
 			},
 		},
 		Spec: volcanov1alpha1.JobSpec{
 			SchedulerName:           "volcano",
-			MinAvailable:            2,
+			MinAvailable:            sumReplicas,
 			Volumes:                 nil,
 			Tasks:                   tasks,
 			Policies:                nil,

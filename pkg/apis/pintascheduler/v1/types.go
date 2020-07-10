@@ -33,9 +33,11 @@ type PintaJob struct {
 }
 
 type PintaJobSpec struct {
-	Type string `json:"type"`
-	Master v1.PodTemplateSpec `json:"master"`
-	Replica v1.PodTemplateSpec `json:"replica"`
+	Type        string             `json:"type"`
+	Master      v1.PodTemplateSpec `json:"master"`
+	Replica     v1.PodTemplateSpec `json:"replica"`
+	NumMasters  int32              `json:"numMasters"`
+	NumReplicas int32              `json:"numReplicas"`
 }
 
 type PintaJobStatus struct {
