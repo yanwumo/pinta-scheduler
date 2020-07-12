@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -318,26 +317,28 @@ func (c *Controller) syncHandler(key string) error {
 
 	// Finally, we update the status block of the PintaJob resource to reflect the
 	// current state of the world
-	//err = c.updatePintaJobStatus(pintaJob, volcanoJob)
-	//if err != nil {
-	//	return err
-	//}
+	err = c.updatePintaJobStatus(pintaJob, volcanoJob)
+	if err != nil {
+		return err
+	}
 
 	c.recorder.Event(pintaJob, corev1.EventTypeNormal, SuccessSynced, MessageResourceSynced)
 	return nil
 }
 
-func (c *Controller) updatePintaJobStatus(pintaJob *pintav1.PintaJob, deployment *appsv1.Deployment) error {
+func (c *Controller) updatePintaJobStatus(pintaJob *pintav1.PintaJob, volcanoJob *volcanov1alpha1.Job) error {
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	pintaJobCopy := pintaJob.DeepCopy()
-	pintaJobCopy.Status.AvailableReplicas = deployment.Status.AvailableReplicas
+	pintaJobCopy.Status = pintav1.PintaJobStatus(volcanoJob.Status)
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the PintaJob resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
 	// which is ideal for ensuring nothing other than resource status has been updated.
-	_, err := c.pintaclientset.PintaV1().PintaJobs(pintaJob.Namespace).Update(context.TODO(), pintaJobCopy, metav1.UpdateOptions{})
+	//
+	// Subresource is enabled.
+	_, err := c.pintaclientset.PintaV1().PintaJobs(pintaJob.Namespace).UpdateStatus(context.TODO(), pintaJobCopy, metav1.UpdateOptions{})
 	return err
 }
 
@@ -416,7 +417,12 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 				Name:     "worker",
 				Replicas: pintaJob.Spec.NumReplicas,
 				Template: pintaJob.Spec.Replica,
-				Policies: nil,
+				Policies: []volcanov1alpha1.LifecyclePolicy{
+					{
+						Event:  "TaskCompleted",
+						Action: "CompleteJob",
+					},
+				},
 			},
 		}
 	case "mpi":
@@ -425,7 +431,12 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 				Name:     "master",
 				Replicas: pintaJob.Spec.NumMasters,
 				Template: pintaJob.Spec.Master,
-				Policies: nil,
+				Policies: []volcanov1alpha1.LifecyclePolicy{
+					{
+						Event:  "TaskCompleted",
+						Action: "CompleteJob",
+					},
+				},
 			},
 			{
 				Name:     "replica",
@@ -440,7 +451,12 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 				Name:     "replica",
 				Replicas: pintaJob.Spec.NumReplicas,
 				Template: pintaJob.Spec.Replica,
-				Policies: nil,
+				Policies: []volcanov1alpha1.LifecyclePolicy{
+					{
+						Event:  "TaskCompleted",
+						Action: "CompleteJob",
+					},
+				},
 			},
 		}
 	case "image-builder":
@@ -469,11 +485,16 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 			},
 		},
 		Spec: volcanov1alpha1.JobSpec{
-			SchedulerName:           "volcano",
-			MinAvailable:            sumReplicas,
-			Volumes:                 nil,
-			Tasks:                   tasks,
-			Policies:                nil,
+			SchedulerName: "volcano",
+			MinAvailable:  sumReplicas,
+			Volumes:       nil,
+			Tasks:         tasks,
+			Policies: []volcanov1alpha1.LifecyclePolicy{
+				{
+					Event:  "PodEvicted",
+					Action: "RestartJob",
+				},
+			},
 			Plugins:                 nil,
 			Queue:                   "",
 			MaxRetry:                0,

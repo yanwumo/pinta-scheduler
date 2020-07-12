@@ -15,10 +15,11 @@ spec:
             - -c
             - |
               echo 'This is PS';
-              sleep 3600;
+              sleep 120;
           resources:
             requests:
               cpu: "8"
+      restartPolicy: OnFailure
   replica:
     spec:
       containers:
@@ -30,9 +31,10 @@ spec:
             - -c
             - |
               echo 'This is worker';
-              sleep 3600;
+              sleep 60;
           resources:
             requests:
               cpu: "8"
+      restartPolicy: OnFailure
   numMasters: 1
   numReplicas: 2

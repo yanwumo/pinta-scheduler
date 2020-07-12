@@ -19,6 +19,7 @@ package v1
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 )
 
 // +genclient
@@ -40,9 +41,7 @@ type PintaJobSpec struct {
 	NumReplicas int32              `json:"numReplicas"`
 }
 
-type PintaJobStatus struct {
-	AvailableReplicas int32 `json:"availableReplicas"`
-}
+type PintaJobStatus volcanov1alpha1.JobStatus
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 

@@ -29,6 +29,9 @@ spec:
                 numReplicas:
                   format: int32
                   type: integer
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
       subresources:
         status: {}
   scope: Namespaced
