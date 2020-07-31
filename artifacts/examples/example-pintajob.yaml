@@ -5,7 +5,11 @@ metadata:
 spec:
   type: ps-worker  # ps-worker, mpi, symmetric, image-builder
   master:
+    metadata:
+      annotations:
+        pinta.qed.usc.edu/speedup: "1"
     spec:
+      schedulerName: "volcano"
       containers:
         - name: test
           image: ubuntu:latest
@@ -21,7 +25,11 @@ spec:
               cpu: "8"
       restartPolicy: OnFailure
   replica:
+    metadata:
+      annotations:
+        pinta.qed.usc.edu/speedup: "1.028695301,1.839589726,2.516247924,3.202671637,3.390178038,3.76465051,3.513700704,3.805721944,3.752839389,3.701449107"
     spec:
+      schedulerName: "volcano"
       containers:
         - name: test
           image: ubuntu:latest
@@ -37,4 +45,4 @@ spec:
               cpu: "8"
       restartPolicy: OnFailure
   numMasters: 1
-  numReplicas: 2
+  numReplicas: 1
