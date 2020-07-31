@@ -19,6 +19,8 @@ package main
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -282,7 +284,16 @@ func (c *Controller) syncHandler(key string) error {
 	volcanoJob, err := c.volcanoJobsLister.Jobs(pintaJob.Namespace).Get(volcanoJobName)
 	// If the resource doesn't exist, we'll create it
 	if errors.IsNotFound(err) {
-		volcanoJob, err = c.volcanoclientset.BatchV1alpha1().Jobs(pintaJob.Namespace).Create(context.TODO(), newVCJob(pintaJob), metav1.CreateOptions{})
+		err = nil
+		volcanoJob = nil
+		if pintaJob.Status != pintav1.Idle && pintaJob.Status != "" {
+			volcanoJob, err = c.volcanoclientset.BatchV1alpha1().Jobs(pintaJob.Namespace).Create(context.TODO(), newVCJob(pintaJob), metav1.CreateOptions{})
+		}
+	} else {
+		if pintaJob.Status == pintav1.Idle || pintaJob.Status == "" {
+			err = c.volcanoclientset.BatchV1alpha1().Jobs(pintaJob.Namespace).Delete(context.TODO(), volcanoJobName, metav1.DeleteOptions{})
+			volcanoJob = nil
+		}
 	}
 
 	// If an error occurs during Get/Create, we'll requeue the item so we can
@@ -294,7 +305,7 @@ func (c *Controller) syncHandler(key string) error {
 
 	// If the Deployment is not controlled by this PintaJob resource, we should log
 	// a warning to the event recorder and return error msg.
-	if !metav1.IsControlledBy(volcanoJob, pintaJob) {
+	if volcanoJob != nil && !metav1.IsControlledBy(volcanoJob, pintaJob) {
 		msg := fmt.Sprintf(MessageResourceExists, volcanoJob.Name)
 		c.recorder.Event(pintaJob, corev1.EventTypeWarning, ErrResourceExists, msg)
 		return fmt.Errorf(msg)
@@ -331,7 +342,15 @@ func (c *Controller) updatePintaJobStatus(pintaJob *pintav1.PintaJob, volcanoJob
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	pintaJobCopy := pintaJob.DeepCopy()
-	pintaJobCopy.Status = pintav1.PintaJobStatus(volcanoJob.Status)
+	if pintaJobCopy.Status == "" {
+		pintaJobCopy.Status = pintav1.Idle
+	}
+	if volcanoJob != nil && volcanoJob.Status.State.Phase == volcanov1alpha1.Running {
+		pintaJobCopy.Status = pintav1.Running
+	}
+	if volcanoJob != nil && volcanoJob.Status.State.Phase == volcanov1alpha1.Completed {
+		pintaJobCopy.Status = pintav1.Completed
+	}
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the PintaJob resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,

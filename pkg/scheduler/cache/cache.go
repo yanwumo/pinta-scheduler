@@ -177,14 +177,18 @@ func (sc *PintaCache) Commit(snapshot *api.ClusterInfo) {
 		//	continue
 		//}
 		job := jobInfo.Job
-		if job.Status == pintav1.Idle && (jobInfo.NumMasters != 0 || jobInfo.NumReplicas != 0) {
-			job.Status = pintav1.Scheduled
-		}
 		job.Spec.NumMasters = jobInfo.NumMasters
 		job.Spec.NumReplicas = jobInfo.NumReplicas
-		_, err := pinta.PintaJobs(jobInfo.Namespace).Update(context.TODO(), job, metav1.UpdateOptions{})
+		job, err := pinta.PintaJobs(jobInfo.Namespace).Update(context.TODO(), job, metav1.UpdateOptions{})
 		if err != nil {
 			klog.Errorf("Commit failed when updating job: %v", err)
+		}
+		if job.Status == pintav1.Idle && (job.Spec.NumMasters != 0 || job.Spec.NumReplicas != 0) {
+			job.Status = pintav1.Scheduled
+			_, err = pinta.PintaJobs(jobInfo.Namespace).UpdateStatus(context.TODO(), job, metav1.UpdateOptions{})
+			if err != nil {
+				klog.Errorf("Commit failed when updating job status: %v", err)
+			}
 		}
 	}
 }
