@@ -314,17 +314,42 @@ func (c *Controller) syncHandler(key string) error {
 	// If this number of the replicas on the PintaJob resource is specified, and the
 	// number does not equal the current desired replicas on the Deployment, we
 	// should update the Deployment resource.
-	//if pintaJob.Spec.Replicas != nil && *pintaJob.Spec.Replicas != *volcanoJob.Spec.Replicas {
-	//	klog.V(4).Infof("PintaJob %s replicas: %d, volcanoJob replicas: %d", name, *pintaJob.Spec.Replicas, *volcanoJob.Spec.Replicas)
-	//	volcanoJob, err = c.kubeclientset.AppsV1().Deployments(pintaJob.Namespace).Update(context.TODO(), newDeployment(pintaJob), metav1.UpdateOptions{})
-	//}
+	if volcanoJob != nil {
+		consistent := true
+		for i, task := range volcanoJob.Spec.Tasks {
+			if task.Name == "ps" || task.Name == "master" {
+				if task.Replicas != pintaJob.Spec.NumMasters {
+					consistent = false
+					volcanoJob.Spec.Tasks[i].Replicas = pintaJob.Spec.NumMasters
+				}
+			} else if task.Name == "worker" || task.Name == "replica" {
+				if task.Replicas != pintaJob.Spec.NumReplicas {
+					consistent = false
+					volcanoJob.Spec.Tasks[i].Replicas = pintaJob.Spec.NumReplicas
+				}
+			} else if task.Name == "image-builder" {
+				if task.Replicas != 1 {
+					consistent = false
+					volcanoJob.Spec.Tasks[i].Replicas = 1
+				}
+			}
+		}
+		if !consistent {
+			// Calculate total number of replicas
+			volcanoJob.Spec.MinAvailable = 0
+			for _, task := range volcanoJob.Spec.Tasks {
+				volcanoJob.Spec.MinAvailable += task.Replicas
+			}
+			volcanoJob, err = c.volcanoclientset.BatchV1alpha1().Jobs(pintaJob.Namespace).Update(context.TODO(), volcanoJob, metav1.UpdateOptions{})
+		}
+	}
 
 	// If an error occurs during Update, we'll requeue the item so we can
 	// attempt processing again later. This could have been caused by a
 	// temporary network failure, or any other transient reason.
-	//if err != nil {
-	//	return err
-	//}
+	if err != nil {
+		return err
+	}
 
 	// Finally, we update the status block of the PintaJob resource to reflect the
 	// current state of the world
