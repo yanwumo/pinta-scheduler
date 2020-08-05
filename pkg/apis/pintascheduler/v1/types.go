@@ -19,6 +19,7 @@ package v1
 import (
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 )
 
 // +genclient
@@ -33,12 +34,28 @@ type PintaJob struct {
 }
 
 type PintaJobSpec struct {
-	Type        string             `json:"type"`
-	Master      v1.PodTemplateSpec `json:"master"`
-	Replica     v1.PodTemplateSpec `json:"replica"`
-	NumMasters  int32              `json:"numMasters"`
-	NumReplicas int32              `json:"numReplicas"`
+	Type        PintaJobType                 `json:"type"`
+	Volumes     []volcanov1alpha1.VolumeSpec `json:"volumes,omitempty"`
+	Master      v1.PodTemplateSpec           `json:"master"`
+	Replica     v1.PodTemplateSpec           `json:"replica"`
+	NumMasters  int32                        `json:"numMasters"`
+	NumReplicas int32                        `json:"numReplicas"`
 }
+
+//type VolumeSpec struct {
+//	MountPath       string                        `json:"mountPath"`
+//	VolumeClaimName string                        `json:"volumeClaimName,omitempty"`
+//	VolumeClaim     *v1.PersistentVolumeClaimSpec `json:"volumeClaim,omitempty"`
+//}
+
+type PintaJobType string
+
+const (
+	Symmetric    PintaJobType = "symmetric"
+	PSWorker     PintaJobType = "ps-worker"
+	MPI          PintaJobType = "mpi"
+	ImageBuilder PintaJobType = "image-builder"
+)
 
 type PintaJobStatus string
 

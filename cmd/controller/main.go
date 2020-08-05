@@ -27,6 +27,8 @@ import (
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
+	"github.com/qed-usc/pinta-scheduler/pkg/controller"
+
 	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	informers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions"
 	"github.com/qed-usc/pinta-scheduler/pkg/signals"
@@ -70,7 +72,7 @@ func main() {
 	pintaInformerFactory := informers.NewSharedInformerFactory(pintaClient, time.Second*30)
 	volcanoInformerFactory := volcanoinformers.NewSharedInformerFactory(volcanoClient, time.Second*30)
 
-	controller := NewController(kubeClient, pintaClient, volcanoClient,
+	pintaController := controller.NewController(kubeClient, pintaClient, volcanoClient,
 		volcanoInformerFactory.Batch().V1alpha1().Jobs(),
 		pintaInformerFactory.Pinta().V1().PintaJobs())
 
@@ -80,7 +82,7 @@ func main() {
 	pintaInformerFactory.Start(stopCh)
 	volcanoInformerFactory.Start(stopCh)
 
-	if err = controller.Run(2, stopCh); err != nil {
+	if err = pintaController.Run(2, stopCh); err != nil {
 		klog.Fatalf("Error running controller: %s", err.Error())
 	}
 }

@@ -17,6 +17,11 @@ spec:
               properties:
                 type:
                   type: string
+                volumes:
+                  type: array
+                  items:
+                    type: object
+                    x-kubernetes-preserve-unknown-fields: true
                 master:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true

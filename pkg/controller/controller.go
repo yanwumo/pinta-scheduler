@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package controller
 
 import (
 	"context"
@@ -447,7 +447,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 	//}
 	var tasks []volcanov1alpha1.TaskSpec
 	switch pintaJob.Spec.Type {
-	case "ps-worker":
+	case pintav1.PSWorker:
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "ps",
@@ -467,7 +467,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 				},
 			},
 		}
-	case "mpi":
+	case pintav1.MPI:
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "master",
@@ -487,7 +487,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 				Policies: nil,
 			},
 		}
-	case "symmetric":
+	case pintav1.Symmetric:
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "replica",
@@ -501,7 +501,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 				},
 			},
 		}
-	case "image-builder":
+	case pintav1.ImageBuilder:
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "image-builder",
@@ -529,7 +529,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 		Spec: volcanov1alpha1.JobSpec{
 			SchedulerName: "volcano",
 			MinAvailable:  sumReplicas,
-			Volumes:       nil,
+			Volumes:       pintaJob.Spec.Volumes,
 			Tasks:         tasks,
 			Policies: []volcanov1alpha1.LifecyclePolicy{
 				{

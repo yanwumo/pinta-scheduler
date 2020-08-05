@@ -4,6 +4,9 @@ metadata:
   name: example-pintajob
 spec:
   type: ps-worker  # ps-worker, mpi, symmetric, image-builder
+  volumes:
+    - volumeClaimName: mnist
+      mountPath: /data
   master:
     metadata:
       annotations:

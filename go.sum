@@ -770,3 +770,5 @@ volcano.sh/volcano v0.0.0-20200702034105-35dbf8f33fab h1:9XHsVuFQv4mt5VebXF7DnZn
 volcano.sh/volcano v0.0.0-20200702034105-35dbf8f33fab/go.mod h1:1pTrt3ZwbZ/lS8mFGGNPC/9gAJ2ibosWjQny5/OQVLg=
 volcano.sh/volcano v1.0.0 h1:9w2913s5M7V2ZWqzprANARr/VMLzNiUpeNxzE48Bs2Q=
 volcano.sh/volcano v1.0.0/go.mod h1:1pTrt3ZwbZ/lS8mFGGNPC/9gAJ2ibosWjQny5/OQVLg=
+volcano.sh/volcano v1.0.1 h1:e9FnHooNXYkwFbAFb/bu+8K9MJqB4UDxbCeDGXEfWZA=
+volcano.sh/volcano v1.0.1/go.mod h1:1pTrt3ZwbZ/lS8mFGGNPC/9gAJ2ibosWjQny5/OQVLg=
