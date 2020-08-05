@@ -32,6 +32,9 @@ func NewJobInfo(uid JobID, job *pintav1.PintaJob) *JobInfo {
 		Name:      job.Name,
 		Namespace: job.Namespace,
 
+		NumMasters: job.Spec.NumMasters,
+		NumReplicas: job.Spec.NumReplicas,
+
 		Requested: EmptyResource(),
 		Allocated: EmptyResource(),
 

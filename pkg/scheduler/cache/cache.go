@@ -124,6 +124,11 @@ func (sc *PintaCache) Snapshot() *api.ClusterInfo {
 			continue
 		}
 
+		// Skip master node
+		if len(value.Node.Spec.Taints) != 0 {
+			continue
+		}
+
 		snapshot.Nodes[value.Name] = value.Clone()
 	}
 
