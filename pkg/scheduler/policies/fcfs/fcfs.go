@@ -17,10 +17,9 @@ func (fcfs *Policy) Name() string {
 func (fcfs *Policy) Initialize() {}
 
 func (fcfs *Policy) Execute(snapshot *api.ClusterInfo) {
-	for id, job := range snapshot.Jobs {
+	for _, job := range snapshot.Jobs {
 		job.NumMasters = 1
 		job.NumReplicas = 2
-		snapshot.Changes = append(snapshot.Changes, id)
 	}
 }
 

@@ -43,14 +43,13 @@ func (equi *Policy) Execute(snapshot *api.ClusterInfo) {
 			for key := range judge {
 				judgeArr = append(judgeArr, int(key))
 			}
-			if judgeArr[0] - judgeArr[1] == 1 || judgeArr[0] - judgeArr[1] == -1 {
+			if judgeArr[0]-judgeArr[1] == 1 || judgeArr[0]-judgeArr[1] == -1 {
 				return
 			}
 		}
 	}
 
-	for id, job := range snapshot.Jobs {
-		snapshot.Changes = append(snapshot.Changes, id)
+	for _, job := range snapshot.Jobs {
 		job.NumReplicas = 0
 	}
 	for {

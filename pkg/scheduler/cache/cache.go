@@ -174,14 +174,15 @@ func (sc *PintaCache) PintaClient() clientset.Interface {
 
 func (sc *PintaCache) Commit(snapshot *api.ClusterInfo) {
 	pinta := sc.pintaClient.PintaV1()
-	for _, jobID := range snapshot.Changes {
-		jobInfo := snapshot.Jobs[jobID]
-		//job, err := pinta.PintaJobs(jobInfo.Namespace).Get(context.TODO(), jobInfo.Name, metav1.GetOptions{})
-		//if err != nil {
-		//	klog.Errorf("Commit failed when getting job: %v", err)
-		//	continue
-		//}
+	for _, jobInfo := range snapshot.Jobs {
 		job := jobInfo.Job
+
+		// Ignore jobs without changes
+		if jobInfo.NumMasters == job.Spec.NumMasters && jobInfo.NumReplicas == job.Spec.NumReplicas {
+			continue
+		}
+
+		// Apply changes
 		job.Spec.NumMasters = jobInfo.NumMasters
 		job.Spec.NumReplicas = jobInfo.NumReplicas
 		job, err := pinta.PintaJobs(jobInfo.Namespace).Update(context.TODO(), job, metav1.UpdateOptions{})
