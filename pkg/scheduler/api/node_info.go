@@ -12,14 +12,8 @@ type NodeInfo struct {
 	// The state of node
 	State NodeState
 
-	// The idle resource on that node
-	Idle *ResourceInfo
-	// The used resource on that node, including running and terminating
-	// pods
-	Used *ResourceInfo
-
 	Allocatable *ResourceInfo
-	Capability  *ResourceInfo
+	Capacity    *ResourceInfo
 
 	// Used to store custom information
 	Others     map[string]interface{}
@@ -56,11 +50,8 @@ func (np NodePhase) String() string {
 // NewNodeInfo is used to create new nodeInfo object
 func NewNodeInfo(node *v1.Node) *NodeInfo {
 	nodeinfo := &NodeInfo{
-		Idle: EmptyResource(),
-		Used: EmptyResource(),
-
 		Allocatable: EmptyResource(),
-		Capability:  EmptyResource(),
+		Capacity:    EmptyResource(),
 
 		GPUDevices: make(map[int]*GPUDevice),
 	}
@@ -68,9 +59,8 @@ func NewNodeInfo(node *v1.Node) *NodeInfo {
 	if node != nil {
 		nodeinfo.Name = node.Name
 		nodeinfo.Node = node
-		nodeinfo.Idle = NewResource(node.Status.Allocatable)
 		nodeinfo.Allocatable = NewResource(node.Status.Allocatable)
-		nodeinfo.Capability = NewResource(node.Status.Capacity)
+		nodeinfo.Capacity = NewResource(node.Status.Capacity)
 	}
 	nodeinfo.setNodeGPUInfo(node)
 	nodeinfo.setNodeState(node)
@@ -95,15 +85,6 @@ func (ni *NodeInfo) setNodeState(node *v1.Node) {
 		ni.State = NodeState{
 			Phase:  NotReady,
 			Reason: "UnInitialized",
-		}
-		return
-	}
-
-	// set NodeState according to resources
-	if !ni.Used.LessEqual(NewResource(node.Status.Allocatable)) {
-		ni.State = NodeState{
-			Phase:  NotReady,
-			Reason: "OutOfSync",
 		}
 		return
 	}
@@ -167,7 +148,5 @@ func (ni *NodeInfo) SetNode(node *v1.Node) {
 	ni.Node = node
 
 	ni.Allocatable = NewResource(node.Status.Allocatable)
-	ni.Capability = NewResource(node.Status.Capacity)
-	ni.Idle = NewResource(node.Status.Allocatable)
-	ni.Used = EmptyResource()
+	ni.Capacity = NewResource(node.Status.Capacity)
 }

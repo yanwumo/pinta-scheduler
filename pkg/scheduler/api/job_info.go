@@ -18,9 +18,6 @@ type JobInfo struct {
 	NumMasters  int32
 	NumReplicas int32
 
-	Requested *ResourceInfo
-	Allocated *ResourceInfo
-
 	CreationTimestamp metav1.Time
 
 	Job *pintav1.PintaJob
@@ -32,11 +29,8 @@ func NewJobInfo(uid JobID, job *pintav1.PintaJob) *JobInfo {
 		Name:      job.Name,
 		Namespace: job.Namespace,
 
-		NumMasters: job.Spec.NumMasters,
+		NumMasters:  job.Spec.NumMasters,
 		NumReplicas: job.Spec.NumReplicas,
-
-		Requested: EmptyResource(),
-		Allocated: EmptyResource(),
 
 		CreationTimestamp: job.GetCreationTimestamp(),
 
@@ -53,8 +47,6 @@ func (ji *JobInfo) Clone() *JobInfo {
 		Priority:    ji.Priority,
 		NumMasters:  ji.NumMasters,
 		NumReplicas: ji.NumReplicas,
-		Requested:   EmptyResource(),
-		Allocated:   EmptyResource(),
 		Job:         ji.Job.DeepCopy(),
 	}
 
