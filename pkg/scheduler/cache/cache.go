@@ -178,7 +178,7 @@ func (sc *PintaCache) Commit(snapshot *api.ClusterInfo) {
 		job := jobInfo.Job
 
 		// Ignore jobs without changes
-		if jobInfo.NumMasters == job.Spec.NumMasters && jobInfo.NumReplicas == job.Spec.NumReplicas {
+		if job.Status != pintav1.Idle && jobInfo.NumMasters == job.Spec.NumMasters && jobInfo.NumReplicas == job.Spec.NumReplicas {
 			continue
 		}
 
