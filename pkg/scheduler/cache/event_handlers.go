@@ -18,7 +18,7 @@ func getJobID(job *pintav1.PintaJob) api.JobID {
 
 // Assumes that lock is already acquired.
 func (sc *PintaCache) addJob(job *pintav1.PintaJob) error {
-	if job.Status == pintav1.Completed {
+	if job.Status.State == pintav1.Completed {
 		return nil
 	}
 

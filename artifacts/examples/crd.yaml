@@ -35,9 +35,34 @@ spec:
                   format: int32
                   type: integer
             status:
-              type: string
+              type: object
+              properties:
+                state:
+                  type: string
+                lastTransitionTime:
+                  format: date-time
+                  type: string
+                numMasters:
+                  format: int32
+                  type: integer
+                numReplicas:
+                  format: int32
+                  type: integer
       subresources:
         status: {}
+      additionalPrinterColumns:
+        - name: Type
+          type: string
+          jsonPath: .spec.type
+        - name: Masters
+          type: integer
+          jsonPath: .spec.numMasters
+        - name: Replicas
+          type: integer
+          jsonPath: .spec.numReplicas
+        - name: Status
+          type: string
+          jsonPath: .status.state
   scope: Namespaced
   names:
     kind: PintaJob

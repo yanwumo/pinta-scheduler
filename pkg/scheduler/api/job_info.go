@@ -15,6 +15,9 @@ type JobInfo struct {
 
 	Priority int32
 
+	PresetNumMasters  int32
+	PresetNumReplicas int32
+
 	NumMasters  int32
 	NumReplicas int32
 
@@ -29,8 +32,11 @@ func NewJobInfo(uid JobID, job *pintav1.PintaJob) *JobInfo {
 		Name:      job.Name,
 		Namespace: job.Namespace,
 
-		NumMasters:  job.Spec.NumMasters,
-		NumReplicas: job.Spec.NumReplicas,
+		PresetNumMasters:  job.Spec.NumMasters,
+		PresetNumReplicas: job.Spec.NumReplicas,
+
+		NumMasters:  job.Status.NumMasters,
+		NumReplicas: job.Status.NumReplicas,
 
 		CreationTimestamp: job.GetCreationTimestamp(),
 
@@ -41,13 +47,15 @@ func NewJobInfo(uid JobID, job *pintav1.PintaJob) *JobInfo {
 
 func (ji *JobInfo) Clone() *JobInfo {
 	info := &JobInfo{
-		UID:         ji.UID,
-		Name:        ji.Name,
-		Namespace:   ji.Namespace,
-		Priority:    ji.Priority,
-		NumMasters:  ji.NumMasters,
-		NumReplicas: ji.NumReplicas,
-		Job:         ji.Job.DeepCopy(),
+		UID:               ji.UID,
+		Name:              ji.Name,
+		Namespace:         ji.Namespace,
+		Priority:          ji.Priority,
+		PresetNumMasters:  ji.PresetNumMasters,
+		PresetNumReplicas: ji.PresetNumReplicas,
+		NumMasters:        ji.NumMasters,
+		NumReplicas:       ji.NumReplicas,
+		Job:               ji.Job.DeepCopy(),
 	}
 
 	ji.CreationTimestamp.DeepCopyInto(&info.CreationTimestamp)

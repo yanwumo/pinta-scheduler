@@ -28,7 +28,7 @@ import (
 )
 
 var defaultSchedulerConf = `
-policy: "fcfs"
+policy: "nop"
 `
 
 func loadSchedulerConf(confStr string) (policies.Policy, *conf.Configuration, error) {

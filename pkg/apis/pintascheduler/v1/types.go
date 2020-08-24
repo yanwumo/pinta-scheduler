@@ -29,17 +29,18 @@ type PintaJob struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PintaJobSpec   `json:"spec"`
-	Status PintaJobStatus `json:"status"`
+	Spec   PintaJobSpec   `json:"spec,omitempty"`
+	Status PintaJobStatus `json:"status,omitempty"`
 }
 
 type PintaJobSpec struct {
-	Type        PintaJobType                 `json:"type"`
-	Volumes     []volcanov1alpha1.VolumeSpec `json:"volumes,omitempty"`
-	Master      v1.PodTemplateSpec           `json:"master"`
-	Replica     v1.PodTemplateSpec           `json:"replica"`
-	NumMasters  int32                        `json:"numMasters"`
-	NumReplicas int32                        `json:"numReplicas"`
+	Type            PintaJobType                 `json:"type,omitempty"`
+	Volumes         []volcanov1alpha1.VolumeSpec `json:"volumes,omitempty"`
+	Master          v1.PodTemplateSpec           `json:"master,omitempty"`
+	Replica         v1.PodTemplateSpec           `json:"replica,omitempty"`
+	NumMasters      int32                        `json:"numMasters,omitempty"`
+	NumReplicas     int32                        `json:"numReplicas,omitempty"`
+	DeadlineSeconds int32                        `json:"deadlineSeconds,omitempty"`
 }
 
 //type VolumeSpec struct {
@@ -57,14 +58,23 @@ const (
 	ImageBuilder PintaJobType = "image-builder"
 )
 
-type PintaJobStatus string
+type PintaJobStatus struct {
+	State              PintaJobState `json:"state,omitempty"`
+	LastTransitionTime metav1.Time   `json:"lastTransitionTime,omitempty"`
+	NumMasters         int32         `json:"numMasters,omitempty"`
+	NumReplicas        int32         `json:"numReplicas,omitempty"`
+	CutoffTime         metav1.Time   `json:"cutoffTime,omitempty"`
+}
+
+type PintaJobState string
 
 const (
-	Idle      PintaJobStatus = "Idle"
-	Scheduled PintaJobStatus = "Scheduled"
-	Running   PintaJobStatus = "Running"
-	Preempted PintaJobStatus = "Preempted"
-	Completed PintaJobStatus = "Completed"
+	Idle      PintaJobState = "Idle"
+	Scheduled PintaJobState = "Scheduled"
+	Running   PintaJobState = "Running"
+	Preempted PintaJobState = "Preempted"
+	Completed PintaJobState = "Completed"
+	Failed    PintaJobState = "Failed"
 )
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

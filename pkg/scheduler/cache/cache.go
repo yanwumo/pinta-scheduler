@@ -178,23 +178,26 @@ func (sc *PintaCache) Commit(snapshot *api.ClusterInfo) {
 		job := jobInfo.Job
 
 		// Ignore jobs without changes
-		if job.Status != pintav1.Idle && jobInfo.NumMasters == job.Spec.NumMasters && jobInfo.NumReplicas == job.Spec.NumReplicas {
+		if job.Status.State != pintav1.Idle && jobInfo.NumMasters == job.Status.NumMasters && jobInfo.NumReplicas == job.Status.NumReplicas {
 			continue
 		}
 
-		// Apply changes
-		job.Spec.NumMasters = jobInfo.NumMasters
-		job.Spec.NumReplicas = jobInfo.NumReplicas
-		job, err := pinta.PintaJobs(jobInfo.Namespace).Update(context.TODO(), job, metav1.UpdateOptions{})
-		if err != nil {
-			klog.Errorf("Commit failed when updating job: %v", err)
+		job.Status.NumMasters = jobInfo.NumMasters
+		job.Status.NumReplicas = jobInfo.NumReplicas
+		// Idle -> Scheduled
+		if job.Status.State == pintav1.Idle && (jobInfo.NumMasters != 0 || jobInfo.NumReplicas != 0) {
+			job.Status.State = pintav1.Scheduled
+			job.Status.LastTransitionTime = metav1.Now()
 		}
-		if job.Status == pintav1.Idle && (job.Spec.NumMasters != 0 || job.Spec.NumReplicas != 0) {
-			job.Status = pintav1.Scheduled
-			_, err = pinta.PintaJobs(jobInfo.Namespace).UpdateStatus(context.TODO(), job, metav1.UpdateOptions{})
-			if err != nil {
-				klog.Errorf("Commit failed when updating job status: %v", err)
-			}
+		// Scheduled -> Idle
+		if job.Status.State == pintav1.Scheduled && (jobInfo.NumMasters == 0 && jobInfo.NumReplicas == 0) {
+			job.Status.State = pintav1.Idle
+			job.Status.LastTransitionTime = metav1.Now()
+		}
+
+		_, err := pinta.PintaJobs(jobInfo.Namespace).UpdateStatus(context.TODO(), job, metav1.UpdateOptions{})
+		if err != nil {
+			klog.Errorf("Commit failed when updating job status: %v", err)
 		}
 	}
 }
