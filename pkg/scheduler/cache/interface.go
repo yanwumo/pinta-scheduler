@@ -19,6 +19,7 @@ package cache
 import (
 	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	"k8s.io/client-go/kubernetes"
+	"reflect"
 	vcclient "volcano.sh/volcano/pkg/client/clientset/versioned"
 
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
@@ -31,7 +32,7 @@ type Cache interface {
 	Run(stopCh <-chan struct{})
 
 	// Snapshot deep copy overall cache information into snapshot
-	Snapshot() *api.ClusterInfo
+	Snapshot(jobCustomFieldsType reflect.Type) *api.ClusterInfo
 
 	// WaitForCacheSync waits for all cache synced
 	WaitForCacheSync(stopCh <-chan struct{}) bool

@@ -2,15 +2,27 @@ apiVersion: pinta.qed.usc.edu/v1
 kind: PintaJob
 metadata:
   name: example-pintajob
+  annotations:
+    pinta.qed.usc.edu/custom-fields: |
+      numMasters: 1
+      numReplicas: 1
+      batchSize: 100
+      iterations: 500
+      performance:
+      - 1
+      - 2
+      - 3
+      - 3.8
+      - 4.6
+      - 4.9
+      - 4.9
+      - 5
 spec:
   type: ps-worker  # ps-worker, mpi, symmetric, image-builder
   volumes:
     - volumeClaimName: mnist
       mountPath: /data
   master:
-    metadata:
-      annotations:
-        pinta.qed.usc.edu/speedup: "1"
     spec:
       containers:
         - name: test
@@ -27,9 +39,6 @@ spec:
               cpu: "8"
       restartPolicy: OnFailure
   replica:
-    metadata:
-      annotations:
-        pinta.qed.usc.edu/speedup: "1.028695301,1.839589726,2.516247924,3.202671637,3.390178038,3.76465051,3.513700704,3.805721944,3.752839389,3.701449107"
     spec:
       containers:
         - name: test
@@ -45,5 +54,3 @@ spec:
             requests:
               cpu: "8"
       restartPolicy: OnFailure
-#  numMasters: 1
-#  numReplicas: 1

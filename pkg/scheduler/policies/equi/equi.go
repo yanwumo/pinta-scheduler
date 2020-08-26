@@ -2,7 +2,10 @@ package equi
 
 import (
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
+	"reflect"
 )
+
+type JobCustomFields struct{}
 
 type Policy struct{}
 
@@ -12,6 +15,10 @@ func New() *Policy {
 
 func (equi *Policy) Name() string {
 	return "equi"
+}
+
+func (hell *Policy) JobCustomFieldsType() reflect.Type {
+	return reflect.TypeOf((*JobCustomFields)(nil))
 }
 
 func (equi *Policy) Initialize() {}

@@ -10,6 +10,7 @@ import (
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
+	"reflect"
 	"sync"
 
 	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
@@ -113,7 +114,7 @@ func (sc *PintaCache) WaitForCacheSync(stopCh <-chan struct{}) bool {
 	)
 }
 
-func (sc *PintaCache) Snapshot() *api.ClusterInfo {
+func (sc *PintaCache) Snapshot(jobCustomFieldsType reflect.Type) *api.ClusterInfo {
 	sc.Mutex.Lock()
 	defer sc.Mutex.Unlock()
 
@@ -139,6 +140,7 @@ func (sc *PintaCache) Snapshot() *api.ClusterInfo {
 		defer wg.Done()
 
 		clonedJob := value.Clone()
+		clonedJob.ParseCustomFields(jobCustomFieldsType)
 
 		cloneJobLock.Lock()
 		snapshot.Jobs[value.UID] = clonedJob

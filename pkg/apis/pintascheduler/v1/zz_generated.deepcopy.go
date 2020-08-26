@@ -115,7 +115,6 @@ func (in *PintaJobSpec) DeepCopy() *PintaJobSpec {
 func (in *PintaJobStatus) DeepCopyInto(out *PintaJobStatus) {
 	*out = *in
 	in.LastTransitionTime.DeepCopyInto(&out.LastTransitionTime)
-	in.CutoffTime.DeepCopyInto(&out.CutoffTime)
 	return
 }
 

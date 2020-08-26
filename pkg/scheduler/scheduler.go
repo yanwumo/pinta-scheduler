@@ -68,7 +68,7 @@ func (pc *Scheduler) runOnce() {
 
 	pc.loadSchedulerConf()
 
-	snapshot := pc.cache.Snapshot()
+	snapshot := pc.cache.Snapshot(pc.policy.JobCustomFieldsType())
 	pc.policy.Execute(snapshot)
 	pc.cache.Commit(snapshot)
 }

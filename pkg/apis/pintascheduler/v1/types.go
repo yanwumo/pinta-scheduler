@@ -34,20 +34,11 @@ type PintaJob struct {
 }
 
 type PintaJobSpec struct {
-	Type            PintaJobType                 `json:"type,omitempty"`
-	Volumes         []volcanov1alpha1.VolumeSpec `json:"volumes,omitempty"`
-	Master          v1.PodTemplateSpec           `json:"master,omitempty"`
-	Replica         v1.PodTemplateSpec           `json:"replica,omitempty"`
-	NumMasters      int32                        `json:"numMasters,omitempty"`
-	NumReplicas     int32                        `json:"numReplicas,omitempty"`
-	DeadlineSeconds int32                        `json:"deadlineSeconds,omitempty"`
+	Type    PintaJobType                 `json:"type,omitempty"`
+	Volumes []volcanov1alpha1.VolumeSpec `json:"volumes,omitempty"`
+	Master  v1.PodTemplateSpec           `json:"master,omitempty"`
+	Replica v1.PodTemplateSpec           `json:"replica,omitempty"`
 }
-
-//type VolumeSpec struct {
-//	MountPath       string                        `json:"mountPath"`
-//	VolumeClaimName string                        `json:"volumeClaimName,omitempty"`
-//	VolumeClaim     *v1.PersistentVolumeClaimSpec `json:"volumeClaim,omitempty"`
-//}
 
 type PintaJobType string
 
@@ -63,7 +54,6 @@ type PintaJobStatus struct {
 	LastTransitionTime metav1.Time   `json:"lastTransitionTime,omitempty"`
 	NumMasters         int32         `json:"numMasters,omitempty"`
 	NumReplicas        int32         `json:"numReplicas,omitempty"`
-	CutoffTime         metav1.Time   `json:"cutoffTime,omitempty"`
 }
 
 type PintaJobState string

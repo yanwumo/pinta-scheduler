@@ -28,12 +28,6 @@ spec:
                 replica:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
-                numMasters:
-                  format: int32
-                  type: integer
-                numReplicas:
-                  format: int32
-                  type: integer
             status:
               type: object
               properties:
