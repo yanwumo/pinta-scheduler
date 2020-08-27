@@ -50,10 +50,10 @@ spec:
           jsonPath: .spec.type
         - name: Masters
           type: integer
-          jsonPath: .spec.numMasters
+          jsonPath: .status.numMasters
         - name: Replicas
           type: integer
-          jsonPath: .spec.numReplicas
+          jsonPath: .status.numReplicas
         - name: Status
           type: string
           jsonPath: .status.state

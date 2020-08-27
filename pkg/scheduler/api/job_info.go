@@ -14,6 +14,7 @@ type JobInfo struct {
 	UID       JobID
 	Name      string
 	Namespace string
+	Type      pintav1.PintaJobType
 
 	NumMasters  int32
 	NumReplicas int32
@@ -30,6 +31,7 @@ func NewJobInfo(uid JobID, job *pintav1.PintaJob) *JobInfo {
 		UID:       uid,
 		Name:      job.Name,
 		Namespace: job.Namespace,
+		Type:      job.Spec.Type,
 
 		NumMasters:  job.Status.NumMasters,
 		NumReplicas: job.Status.NumReplicas,
@@ -55,6 +57,7 @@ func (ji *JobInfo) Clone() *JobInfo {
 		UID:          ji.UID,
 		Name:         ji.Name,
 		Namespace:    ji.Namespace,
+		Type:         ji.Type,
 		NumMasters:   ji.NumMasters,
 		NumReplicas:  ji.NumReplicas,
 		CustomFields: ji.CustomFields,
