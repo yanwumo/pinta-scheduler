@@ -1,0 +1,20 @@
+name: tests
+on:
+  pull_request:
+    branches:
+    - master
+    paths:
+    - '**'
+    - '**/README.md'
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: make verify
+  run-local-test-on-kind:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: |
+        make run-local
