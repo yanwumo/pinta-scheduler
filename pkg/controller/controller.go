@@ -555,7 +555,10 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 					Action: "RestartJob",
 				},
 			},
-			Plugins:                 nil,
+			Plugins: map[string][]string{
+				"env": {},
+				"svc": {},
+			},
 			Queue:                   "",
 			MaxRetry:                0,
 			TTLSecondsAfterFinished: nil,
