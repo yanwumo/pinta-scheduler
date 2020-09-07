@@ -24,7 +24,7 @@ func (hell *Policy) JobCustomFieldsType() reflect.Type {
 	return reflect.TypeOf((*JobCustomFields)(nil))
 }
 
-func (nop *Policy) Initialize() {}
+func (nop *Policy) Initialize(in interface{}) {}
 
 func (nop *Policy) Execute(snapshot *api.ClusterInfo) {
 	// Job spec passthrough

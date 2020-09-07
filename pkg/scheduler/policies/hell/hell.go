@@ -1,11 +1,17 @@
 package hell
 
 import (
+	"bytes"
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
+	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/cache"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/remotecommand"
 	"k8s.io/klog"
 	"math"
 	"reflect"
+	"strconv"
 )
 
 type JobCustomFields struct {
@@ -16,7 +22,9 @@ type JobCustomFields struct {
 	CompletedIterations int
 }
 
-type Policy struct{}
+type Policy struct {
+	cache cache.Cache
+}
 
 func New() *Policy {
 	return &Policy{}
@@ -30,11 +38,56 @@ func (hell *Policy) JobCustomFieldsType() reflect.Type {
 	return reflect.TypeOf((*JobCustomFields)(nil))
 }
 
-func (hell *Policy) Initialize() {}
+func (hell *Policy) Initialize(in interface{}) {
+	hell.cache = in.(cache.Cache)
+}
 
 func (hell *Policy) Execute(snapshot *api.ClusterInfo) {
 	klog.V(3).Infof("Begin HELL")
 	defer klog.V(3).Infof("End HELL")
+
+	// Get # completed iterations reported by the job
+	for _, job := range snapshot.Jobs {
+		var podName string
+		switch job.Type {
+		case pintav1.Symmetric:
+			podName = job.Name + "-replica-0"
+		case pintav1.PSWorker:
+			podName = job.Name + "-worker-0"
+		case pintav1.MPI:
+			podName = job.Name + "-replica-0"
+		default:
+			continue
+		}
+		clientset := hell.cache.Client()
+		req := clientset.CoreV1().RESTClient().Post().Resource("pods").
+			Name(podName).
+			Namespace(job.Namespace).SubResource("exec")
+		req.VersionedParams(&v1.PodExecOptions{
+			Command: []string{"cat", "/etc/pinta/ITERATION"},
+			Stdin:   false,
+			Stdout:  true,
+			Stderr:  false,
+			TTY:     false,
+		}, scheme.ParameterCodec)
+
+		var stdout bytes.Buffer
+		exec, err := remotecommand.NewSPDYExecutor(hell.cache.(*cache.PintaCache).ClientConfig, "POST", req.URL())
+		if err != nil {
+			continue
+		}
+		err = exec.Stream(remotecommand.StreamOptions{
+			Stdin:  nil,
+			Stdout: &stdout,
+			Stderr: nil,
+		})
+		customFields := job.CustomFields.(*JobCustomFields)
+		stdoutString := stdout.String()
+		customFields.CompletedIterations, err = strconv.Atoi(stdoutString)
+		if err != nil {
+			continue
+		}
+	}
 
 	// Clear previous schedules
 	for _, job := range snapshot.Jobs {

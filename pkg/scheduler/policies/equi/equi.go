@@ -21,7 +21,7 @@ func (hell *Policy) JobCustomFieldsType() reflect.Type {
 	return reflect.TypeOf((*JobCustomFields)(nil))
 }
 
-func (equi *Policy) Initialize() {}
+func (equi *Policy) Initialize(in interface{}) {}
 
 func (equi *Policy) Execute(snapshot *api.ClusterInfo) {
 	numNodes := len(snapshot.Nodes)

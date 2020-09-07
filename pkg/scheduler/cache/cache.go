@@ -36,6 +36,8 @@ type PintaCache struct {
 
 	Jobs  map[api.JobID]*api.JobInfo
 	Nodes map[string]*api.NodeInfo
+
+	ClientConfig *rest.Config
 }
 
 func New(config *rest.Config) Cache {
@@ -57,11 +59,12 @@ func newPintaCache(config *rest.Config) Cache {
 	}
 
 	sc := &PintaCache{
-		Jobs:        make(map[api.JobID]*api.JobInfo),
-		Nodes:       make(map[string]*api.NodeInfo),
-		kubeClient:  kubeClient,
-		vcClient:    vcClient,
-		pintaClient: client,
+		Jobs:         make(map[api.JobID]*api.JobInfo),
+		Nodes:        make(map[string]*api.NodeInfo),
+		kubeClient:   kubeClient,
+		vcClient:     vcClient,
+		pintaClient:  client,
+		ClientConfig: config,
 	}
 
 	informerFactory := informers.NewSharedInformerFactory(sc.kubeClient, 0)

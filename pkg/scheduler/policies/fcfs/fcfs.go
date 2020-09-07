@@ -21,7 +21,7 @@ func (hell *Policy) JobCustomFieldsType() reflect.Type {
 	return reflect.TypeOf((*JobCustomFields)(nil))
 }
 
-func (fcfs *Policy) Initialize() {}
+func (fcfs *Policy) Initialize(in interface{}) {}
 
 func (fcfs *Policy) Execute(snapshot *api.ClusterInfo) {
 	// Do nothing

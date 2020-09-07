@@ -8,7 +8,7 @@ import (
 
 type Policy interface {
 	Name() string
-	Initialize()
+	Initialize(in interface{})
 	JobCustomFieldsType() reflect.Type
 	Execute(snapshot *api.ClusterInfo)
 	UnInitialize()
