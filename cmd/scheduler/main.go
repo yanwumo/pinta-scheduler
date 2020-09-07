@@ -17,6 +17,7 @@ package main
 
 import (
 	"fmt"
+	"net/http"
 	"os"
 	"runtime"
 	"time"
@@ -30,8 +31,10 @@ import (
 	cliflag "k8s.io/component-base/cli/flag"
 	"k8s.io/klog"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/qed-usc/pinta-scheduler/cmd/scheduler/app"
 	"github.com/qed-usc/pinta-scheduler/cmd/scheduler/app/options"
+	"github.com/qed-usc/pinta-scheduler/pkg/metrics"
 
 	// Import default policies.
 	_ "github.com/qed-usc/pinta-scheduler/pkg/scheduler/policies"
@@ -56,6 +59,18 @@ func main() {
 
 	go wait.Until(klog.Flush, *logFlushFreq, wait.NeverStop)
 	defer klog.Flush()
+
+	// start serving prometheus on 8080
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
+	metrics.RegisterPintaJob()
+	go func() {
+		klog.Info("Listening and serving metrics at port 8080...")
+		err := http.ListenAndServe(":8080", metricsMux)
+		if err != nil {
+			klog.Errorf("Metrics (http) serving failed: %v", err)
+		}
+	}()
 
 	if err := app.Run(s); err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)

@@ -18,8 +18,14 @@ export KUBECONFIG=$HOME/.kind/config
 
 kind create cluster --config ./hack/kind_cluster.yaml  --kubeconfig $KUBECONFIG
 
+# Start monitoring in cluster
+sh ./hack/install_monitoring.sh
+
+# kubectl apply -f https://raw.githubusercontent.com/volcano-sh/volcano/v1.0.1/installer/volcano-development.yaml
+kubectl apply -f https://raw.githubusercontent.com/volcano-sh/volcano/master/installer/volcano-development.yaml
+
 kubectl apply -f ./artifacts/examples/crd.yaml
 kubectl wait --timeout=5m --for=condition=Established crd $(kubectl get crd --output=jsonpath='{.items[*].metadata.name}')
-
+kubectl apply -f ./deploy/dev
 
 echo -e '====================\nTo use the cluster:\nexport KUBECONFIG='$KUBECONFIG '\n===================='

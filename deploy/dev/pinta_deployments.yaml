@@ -1,0 +1,180 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pinta-scheduler
+  namespace: pinta-system
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pinta-scheduler
+rules:
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: ["pinta.qed.usc.edu"]
+    resources: ["pintajobs"]
+    verbs: ["get", "list", "watch", "update", "delete"]
+  - apiGroups: ["pinta.qed.usc.edu"]
+    resources: ["pintajobs/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "list", "watch", "update", "patch"]
+  - apiGroups: ["batch.volcano.sh"]
+    resources: ["jobs", "jobs/status"]
+    verbs: ["create", "get", "list", "watch", "update", "patch", "updateStatus", "delete"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["list", "watch"]
+  - apiGroups: [""]
+    resources: ["resourcequotas"]
+    verbs: ["list", "watch"]
+  - apiGroups: [""]
+    resources: ["nodes"]
+    verbs: ["list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pinta-scheduler-role
+subjects:
+  - kind: ServiceAccount
+    name: pinta-scheduler
+    namespace: pinta-system
+roleRef:
+  kind: ClusterRole
+  name: pinta-scheduler
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: pinta-scheduler
+  namespace: pinta-system
+  labels:
+    app: pinta-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pinta-scheduler
+  template:
+    metadata:
+      labels:
+        app: pinta-scheduler
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8080"
+    spec:
+      serviceAccount: pinta-scheduler
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+      containers:
+        - name: pinta-scheduler
+          image: pintaqed/pinta-scheduler:dev
+          command:
+            - /bin/pinta-scheduler
+          args:
+            - --logtostderr
+            - --scheduler-conf=/pinta.scheduler/pinta-scheduler.conf
+            - -v=4
+            - 2>&1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: metrics
+              protocol: TCP
+          volumeMounts:
+            - name: scheduler-config
+              mountPath: /pinta.scheduler
+      volumes:
+        - name: scheduler-config
+          configMap:
+            name: pinta-scheduler-configmap
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: pinta-controller
+  namespace: pinta-system
+---
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: pinta-controller
+rules:
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: ["pinta.qed.usc.edu"]
+    resources: ["pintajobs"]
+    verbs: ["get", "list", "watch", "update", "delete"]
+  - apiGroups: ["pinta.qed.usc.edu"]
+    resources: ["pintajobs/status"]
+    verbs: ["update", "patch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "list", "watch", "update", "patch"]
+  - apiGroups: ["batch.volcano.sh"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: pinta-controller-role
+subjects:
+  - kind: ServiceAccount
+    name: pinta-controller
+    namespace: pinta-system
+roleRef:
+  kind: ClusterRole
+  name: pinta-controller
+  apiGroup: rbac.authorization.k8s.io
+---
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: pinta-controller
+  namespace: pinta-system
+  labels:
+    app: pinta-controller
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pinta-controller
+  template:
+    metadata:
+      labels:
+        app: pinta-controller
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8080"
+    spec:
+      serviceAccount: pinta-controller
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      tolerations:
+        - effect: NoSchedule
+          key: node-role.kubernetes.io/master
+      containers:
+        - name: pinta-controller
+          image: pintaqed/pinta-scheduler:dev
+          command:
+            - /bin/pinta-controller
+          args:
+            - --logtostderr
+            - -v=4
+            - 2>&1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: metrics
+              protocol: TCP

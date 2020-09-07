@@ -20,6 +20,7 @@
 /output*/
 /_output*/
 /_output
+bin/*
 
 # Emacs save files
 *~
@@ -57,6 +58,7 @@ network_closure.sh
 
 # Compiled binaries in third_party
 /third_party/pkg
+kube-prometheus/
 
 # Also ignore etcd installed by hack/install-etcd.sh
 /third_party/etcd*

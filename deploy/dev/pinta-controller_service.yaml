@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pinta-controller
+  namespace: pinta-system
+  labels:
+    app: pinta-controller
+  annotations:
+    prometheus.io/scrape: 'true'
+    prometheus.io/path: '/prometheus'
+    prometheus.io/port:  '8080'
+spec:
+  selector:
+    app: pinta-controller
+  ports:
+    - name: http-server
+      port: 8080
+  type: NodePort

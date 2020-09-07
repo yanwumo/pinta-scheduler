@@ -1,0 +1,132 @@
+# A service account for pods to access kubernetes API
+ apiVersion: v1
+ kind: ServiceAccount
+ metadata:
+   name: pinta-api-server
+   namespace: pinta-system
+ ---
+ # Grant API access to pods
+ apiVersion: rbac.authorization.k8s.io/v1
+ kind: ClusterRole
+ metadata:
+   name: pinta-api-server
+ rules:
+   - apiGroups: ["pinta.qed.usc.edu"]
+     resources: ["pintajobs"]
+     verbs: ["*"]
+   - apiGroups: ["pinta.qed.usc.edu"]
+     resources: ["pintajobs/status"]
+     verbs: ["update", "patch"]
+   - apiGroups: [""]
+     resources: ["persistentvolumeclaims"]
+     verbs: ["create", "get", "list", "watch", "update", "delete"]
+   - apiGroups: [""]
+     resources: ["pods", "pods/status"]
+     verbs: ["*"]
+   - apiGroups: [""]
+     resources: ["pods/exec"]
+     verbs: ["create", "get"]
+   - apiGroups: [""]
+     resources: ["pods/attach"]
+     verbs: ["create", "get"]
+   - apiGroups: [""]
+     resources: ["namespaces"]
+     verbs: ["list", "watch"]
+ ---
+ apiVersion: rbac.authorization.k8s.io/v1
+ kind: ClusterRoleBinding
+ metadata:
+   name: pinta-api-server-role
+ subjects:
+   - kind: ServiceAccount
+     name: pinta-api-server
+     namespace: pinta-system
+ roleRef:
+   kind: ClusterRole
+   name: pinta-api-server
+   apiGroup: rbac.authorization.k8s.io
+ ---
+ # Expose pinta api server
+ apiVersion: v1
+ kind: Service
+ metadata:
+   name: pinta-service
+   namespace: pinta-system
+   labels:
+     app: pinta-api-server
+ spec:
+   selector:
+     app: pinta-api-server
+   ports:
+     - name: http
+       port: 80
+       targetPort: 80
+ ---
+ apiVersion: networking.k8s.io/v1beta1
+ kind: Ingress
+ metadata:
+   name: pinta-api-server
+   namespace: pinta-system
+   # annotations:
+   #   kubernetes.io/ingress.class: traefik
+ spec:
+   rules:
+     - host: qedsim.usc.edu
+       http:
+         paths:
+           - path: /
+             backend:
+               serviceName: pinta-service
+               servicePort: http
+   tls:
+     - secretName: pinta-tls-cert
+       hosts:
+         - qedsim.usc.edu
+ ---
+ apiVersion: v1
+ kind: PersistentVolumeClaim
+ metadata:
+   name: pinta-pv-claim
+   namespace: pinta-system
+ spec:
+   storageClassName: pinta
+   accessModes:
+     - ReadWriteOnce
+   resources:
+     requests:
+       storage: 3Gi
+ ---
+ apiVersion: apps/v1
+ kind: Deployment
+ metadata:
+   name: pinta-api-server
+   namespace: pinta-system
+ spec:
+   replicas: 1
+   selector:
+     matchLabels:
+       app: pinta-api-server
+   template:
+     metadata:
+       labels:
+         app: pinta-api-server
+     spec:
+       serviceAccountName: pinta-api-server
+       volumes:
+         - name: pinta-pv-storage
+           persistentVolumeClaim:
+             claimName: pinta-pv-claim
+       containers:
+         - name: pinta-api-server
+           image: yanwumo/pinta:latest
+           ports:
+             - containerPort: 8080
+               name: api-server
+           volumeMounts:
+             - name: pinta-pv-storage
+               mountPath: /app
+           envFrom:
+             - configMapRef:
+                 name: pinta-config
+             - configMapRef:
+                 name: postgres-config

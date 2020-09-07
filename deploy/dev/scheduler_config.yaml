@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pinta-scheduler-configmap
+  namespace: pinta-system
+data:
+  pinta-scheduler.conf: |
+    policy: nop

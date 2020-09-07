@@ -19,8 +19,9 @@ package controller
 import (
 	"context"
 	"fmt"
-	"github.com/qed-usc/pinta-scheduler/pkg/controller/framework"
 	"time"
+
+	"github.com/qed-usc/pinta-scheduler/pkg/controller/framework"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -41,6 +42,7 @@ import (
 	informers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions"
 	pintajobinformers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pintascheduler/v1"
 	listers "github.com/qed-usc/pinta-scheduler/pkg/generated/listers/pintascheduler/v1"
+	"github.com/qed-usc/pinta-scheduler/pkg/metrics"
 
 	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 	volcano "volcano.sh/volcano/pkg/client/clientset/versioned"
@@ -95,6 +97,8 @@ type Controller struct {
 	// Kubernetes API.
 	recorder record.EventRecorder
 	workers  int
+
+	metricRecorder *metrics.Recorder
 }
 
 func (c *Controller) Name() string {
@@ -129,6 +133,7 @@ func (c *Controller) Initialize(opt *framework.ControllerOption) error {
 	c.workqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "PintaJobs")
 	c.recorder = recorder
 	c.workers = opt.WorkerNum
+	c.metricRecorder = metrics.NewRecorder()
 
 	klog.Info("Setting up event handlers")
 	// Set up an event handler for when PintaJob resources change
@@ -386,17 +391,22 @@ func (c *Controller) updatePintaJobStatus(pintaJob *pintav1.PintaJob, volcanoJob
 	newState := oldState
 	if oldState == "" {
 		newState = pintav1.Idle
+
 	}
 	if volcanoJob != nil {
 		switch volcanoJob.Status.State.Phase {
+		case volcanov1alpha1.Restarting:
+
 		case volcanov1alpha1.Running:
 			if lastPintaJobStatus.NumReplicas == 0 {
 				newState = pintav1.Preempted
 			} else {
 				newState = pintav1.Running
+
 			}
 		case volcanov1alpha1.Completed:
 			newState = pintav1.Completed
+
 		case volcanov1alpha1.Failed:
 			newState = pintav1.Failed
 		}
@@ -405,6 +415,9 @@ func (c *Controller) updatePintaJobStatus(pintaJob *pintav1.PintaJob, volcanoJob
 	if newState == oldState {
 		return nil
 	}
+
+	// Updated status facts metrics
+	c.metricRecorder.PintaJobStatusMetric(pintaJob, oldState, newState)
 
 	// NEVER modify objects from the store. It's a read-only, local cache.
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
