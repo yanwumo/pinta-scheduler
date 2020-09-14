@@ -19,10 +19,11 @@ metadata:
       - 5
 spec:
   type: ps-worker  # ps-worker, mpi, symmetric, image-builder
-  volumes:
-    - volumeClaimName: mnist
-      mountPath: /data
+#  volumes:
+#    - volumeClaimName: mnist
+#      mountPath: /data
   master:
+#    nodeType: cpu-1
     spec:
       containers:
         - name: test
@@ -33,12 +34,12 @@ spec:
             - -c
             - |
               echo 'This is PS';
-              sleep 120;
-          resources:
-            requests:
-              cpu: "8"
+              sleep 3600;
       restartPolicy: OnFailure
+    resources:
+      node: "1"
   replica:
+#    nodeType: cpu-2
     spec:
       containers:
         - name: test
@@ -49,8 +50,7 @@ spec:
             - -c
             - |
               echo 'This is worker';
-              sleep 60;
-          resources:
-            requests:
-              cpu: "8"
+              sleep 3600;
       restartPolicy: OnFailure
+    resources:
+      node: "1"

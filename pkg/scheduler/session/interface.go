@@ -1,16 +1,15 @@
-package policies
+package session
 
 import (
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
 	"reflect"
 	"sync"
 )
 
 type Policy interface {
 	Name() string
-	Initialize(in interface{})
+	Initialize()
 	JobCustomFieldsType() reflect.Type
-	Execute(snapshot *api.ClusterInfo)
+	Execute(ssn *Session)
 	UnInitialize()
 }
 

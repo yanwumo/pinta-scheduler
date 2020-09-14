@@ -3,27 +3,41 @@ package api
 import (
 	"fmt"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"math"
-	"volcano.sh/volcano/pkg/scheduler/util/assert"
+	"strconv"
 )
 
+// Resource struct defines all the resource type
+type Resource struct {
+	MilliCPU float64
+	Memory   float64
+
+	// ScalarResources
+	ScalarResources map[v1.ResourceName]float64
+
+	// MaxTaskNum is only used by predicates; it should NOT
+	// be accounted in other operators, e.g. Add.
+	MaxTaskNum int
+}
+
 const (
+	// GPUResourceName need to follow https://github.com/NVIDIA/k8s-device-plugin/blob/66a35b71ac4b5cbfb04714678b548bd77e5ba719/server.go#L20
 	GPUResourceName = "nvidia.com/gpu"
 )
 
-type ResourceInfo struct {
-	CPUNodes        int
-	ScalarResources map[v1.ResourceName]float64
+// EmptyResource creates a empty resource object and returns
+func EmptyResource() *Resource {
+	return &Resource{}
 }
 
-func EmptyResource() *ResourceInfo {
-	return &ResourceInfo{}
-}
-
-func (r *ResourceInfo) Clone() *ResourceInfo {
-	clone := &ResourceInfo{
-		CPUNodes: r.CPUNodes,
+// Clone is used to clone a resource type
+func (r *Resource) Clone() *Resource {
+	clone := &Resource{
+		MilliCPU:   r.MilliCPU,
+		Memory:     r.Memory,
+		MaxTaskNum: r.MaxTaskNum,
 	}
 
 	if r.ScalarResources != nil {
@@ -36,23 +50,34 @@ func (r *ResourceInfo) Clone() *ResourceInfo {
 	return clone
 }
 
+var minMilliCPU float64 = 10
 var minMilliScalarResources float64 = 10
+var minMemory float64 = 10 * 1024 * 1024
 
-func NewResource(rl v1.ResourceList) *ResourceInfo {
+// NewResource create a new resource object from resource list
+func NewResource(rl v1.ResourceList) *Resource {
 	r := EmptyResource()
-	r.CPUNodes = 1
 	for rName, rQuant := range rl {
-		//NOTE: When converting this back to k8s resource, we need record the format as well as / 1000
-		if v1helper.IsScalarResourceName(rName) {
-			r.AddScalar(rName, float64(rQuant.MilliValue()))
+		switch rName {
+		case v1.ResourceCPU:
+			r.MilliCPU += float64(rQuant.MilliValue())
+		case v1.ResourceMemory:
+			r.Memory += float64(rQuant.Value())
+		case v1.ResourcePods:
+			r.MaxTaskNum += int(rQuant.Value())
+		default:
+			//NOTE: When converting this back to k8s resource, we need record the format as well as / 1000
+			if v1helper.IsScalarResourceName(rName) {
+				r.AddScalar(rName, float64(rQuant.MilliValue()))
+			}
 		}
 	}
 	return r
 }
 
 // IsEmpty returns bool after checking any of resource is less than min possible value
-func (r *ResourceInfo) IsEmpty() bool {
-	if r.CPUNodes != 0 {
+func (r *Resource) IsEmpty() bool {
+	if !(r.MilliCPU < minMilliCPU && r.Memory < minMemory) {
 		return false
 	}
 
@@ -65,9 +90,26 @@ func (r *ResourceInfo) IsEmpty() bool {
 	return true
 }
 
+// IsZero checks whether that resource is less than min possible value
+func (r *Resource) IsZero(rn v1.ResourceName) bool {
+	switch rn {
+	case v1.ResourceCPU:
+		return r.MilliCPU < minMilliCPU
+	case v1.ResourceMemory:
+		return r.Memory < minMemory
+	default:
+		if r.ScalarResources == nil {
+			return true
+		}
+
+		return r.ScalarResources[rn] < minMilliScalarResources
+	}
+}
+
 // Add is used to add the two resources
-func (r *ResourceInfo) Add(rr *ResourceInfo) *ResourceInfo {
-	r.CPUNodes += rr.CPUNodes
+func (r *Resource) Add(rr *Resource) *Resource {
+	r.MilliCPU += rr.MilliCPU
+	r.Memory += rr.Memory
 
 	for rName, rQuant := range rr.ScalarResources {
 		if r.ScalarResources == nil {
@@ -80,10 +122,9 @@ func (r *ResourceInfo) Add(rr *ResourceInfo) *ResourceInfo {
 }
 
 //Sub subtracts two Resource objects.
-func (r *ResourceInfo) Sub(rr *ResourceInfo) *ResourceInfo {
-	assert.Assertf(rr.LessEqual(r), "resource is not sufficient to do operation: <%v> sub <%v>", r, rr)
-
-	r.CPUNodes -= rr.CPUNodes
+func (r *Resource) Sub(rr *Resource) *Resource {
+	r.MilliCPU -= rr.MilliCPU
+	r.Memory -= rr.Memory
 
 	for rrName, rrQuant := range rr.ScalarResources {
 		if r.ScalarResources == nil {
@@ -96,13 +137,16 @@ func (r *ResourceInfo) Sub(rr *ResourceInfo) *ResourceInfo {
 }
 
 // SetMaxResource compares with ResourceList and takes max value for each Resource.
-func (r *ResourceInfo) SetMaxResource(rr *ResourceInfo) {
+func (r *Resource) SetMaxResource(rr *Resource) {
 	if r == nil || rr == nil {
 		return
 	}
 
-	if rr.CPUNodes > r.CPUNodes {
-		r.CPUNodes = rr.CPUNodes
+	if rr.MilliCPU > r.MilliCPU {
+		r.MilliCPU = rr.MilliCPU
+	}
+	if rr.Memory > r.Memory {
+		r.Memory = rr.Memory
 	}
 
 	for rrName, rrQuant := range rr.ScalarResources {
@@ -120,13 +164,38 @@ func (r *ResourceInfo) SetMaxResource(rr *ResourceInfo) {
 	}
 }
 
+// SetMinResource compares with ResourceList and takes min value for each Resource.
+func (r *Resource) SetMinResource(rr *Resource) {
+	if r == nil || rr == nil {
+		return
+	}
+
+	if rr.MilliCPU < r.MilliCPU {
+		r.MilliCPU = rr.MilliCPU
+	}
+	if rr.Memory < r.Memory {
+		r.Memory = rr.Memory
+	}
+
+	for rName, rQuant := range r.ScalarResources {
+		rrQuant := rr.ScalarResources[rName]
+		if rrQuant < rQuant {
+			r.ScalarResources[rName] = rrQuant
+		}
+	}
+}
+
 //FitDelta Computes the delta between a resource oject representing available
 //resources an operand representing resources being requested.  Any
 //field that is less than 0 after the operation represents an
 //insufficient resource.
-func (r *ResourceInfo) FitDelta(rr *ResourceInfo) *ResourceInfo {
-	if rr.CPUNodes > 0 {
-		r.CPUNodes -= rr.CPUNodes
+func (r *Resource) FitDelta(rr *Resource) *Resource {
+	if rr.MilliCPU > 0 {
+		r.MilliCPU -= rr.MilliCPU + minMilliCPU
+	}
+
+	if rr.Memory > 0 {
+		r.Memory -= rr.Memory + minMemory
 	}
 
 	for rrName, rrQuant := range rr.ScalarResources {
@@ -142,13 +211,26 @@ func (r *ResourceInfo) FitDelta(rr *ResourceInfo) *ResourceInfo {
 	return r
 }
 
+// Multi multiples the resource with ratio provided
+func (r *Resource) Multi(ratio float64) *Resource {
+	r.MilliCPU *= ratio
+	r.Memory *= ratio
+	for rName, rQuant := range r.ScalarResources {
+		r.ScalarResources[rName] = rQuant * ratio
+	}
+	return r
+}
+
 // Less checks whether a resource is less than other
-func (r *ResourceInfo) Less(rr *ResourceInfo) bool {
+func (r *Resource) Less(rr *Resource) bool {
 	lessFunc := func(l, r float64) bool {
 		return l < r
 	}
 
-	if !(r.CPUNodes < rr.CPUNodes) {
+	if !lessFunc(r.MilliCPU, rr.MilliCPU) {
+		return false
+	}
+	if !lessFunc(r.Memory, rr.Memory) {
 		return false
 	}
 
@@ -178,12 +260,15 @@ func (r *ResourceInfo) Less(rr *ResourceInfo) bool {
 }
 
 // LessEqualStrict checks whether a resource is less or equal than other
-func (r *ResourceInfo) LessEqualStrict(rr *ResourceInfo) bool {
+func (r *Resource) LessEqualStrict(rr *Resource) bool {
 	lessFunc := func(l, r float64) bool {
 		return l <= r
 	}
 
-	if !(r.CPUNodes < rr.CPUNodes) {
+	if !lessFunc(r.MilliCPU, rr.MilliCPU) {
+		return false
+	}
+	if !lessFunc(r.Memory, rr.Memory) {
 		return false
 	}
 
@@ -197,7 +282,7 @@ func (r *ResourceInfo) LessEqualStrict(rr *ResourceInfo) bool {
 }
 
 // LessEqual checks whether a resource is less than other resource
-func (r *ResourceInfo) LessEqual(rr *ResourceInfo) bool {
+func (r *Resource) LessEqual(rr *Resource) bool {
 	lessEqualFunc := func(l, r, diff float64) bool {
 		if l < r || math.Abs(l-r) < diff {
 			return true
@@ -205,7 +290,10 @@ func (r *ResourceInfo) LessEqual(rr *ResourceInfo) bool {
 		return false
 	}
 
-	if !(r.CPUNodes <= rr.CPUNodes) {
+	if !lessEqualFunc(r.MilliCPU, rr.MilliCPU, minMilliCPU) {
+		return false
+	}
+	if !lessEqualFunc(r.Memory, rr.Memory, minMemory) {
 		return false
 	}
 
@@ -231,13 +319,19 @@ func (r *ResourceInfo) LessEqual(rr *ResourceInfo) bool {
 }
 
 // Diff calculate the difference between two resource
-func (r *ResourceInfo) Diff(rr *ResourceInfo) (*ResourceInfo, *ResourceInfo) {
+func (r *Resource) Diff(rr *Resource) (*Resource, *Resource) {
 	increasedVal := EmptyResource()
 	decreasedVal := EmptyResource()
-	if r.CPUNodes > rr.CPUNodes {
-		increasedVal.CPUNodes += r.CPUNodes - rr.CPUNodes
+	if r.MilliCPU > rr.MilliCPU {
+		increasedVal.MilliCPU += r.MilliCPU - rr.MilliCPU
 	} else {
-		decreasedVal.CPUNodes += rr.CPUNodes - r.CPUNodes
+		decreasedVal.MilliCPU += rr.MilliCPU - r.MilliCPU
+	}
+
+	if r.Memory > rr.Memory {
+		increasedVal.Memory += r.Memory - rr.Memory
+	} else {
+		decreasedVal.Memory += rr.Memory - r.Memory
 	}
 
 	for rName, rQuant := range r.ScalarResources {
@@ -260,8 +354,8 @@ func (r *ResourceInfo) Diff(rr *ResourceInfo) (*ResourceInfo, *ResourceInfo) {
 }
 
 // String returns resource details in string format
-func (r *ResourceInfo) String() string {
-	str := fmt.Sprintf("cpu %v", r.CPUNodes)
+func (r *Resource) String() string {
+	str := fmt.Sprintf("cpu %0.2f, memory %0.2f", r.MilliCPU, r.Memory)
 	for rName, rQuant := range r.ScalarResources {
 		str = fmt.Sprintf("%s, %s %0.2f", str, rName, rQuant)
 	}
@@ -269,15 +363,22 @@ func (r *ResourceInfo) String() string {
 }
 
 // Get returns the resource value for that particular resource type
-func (r *ResourceInfo) Get(rn v1.ResourceName) float64 {
-	if r.ScalarResources == nil {
-		return 0
+func (r *Resource) Get(rn v1.ResourceName) float64 {
+	switch rn {
+	case v1.ResourceCPU:
+		return r.MilliCPU
+	case v1.ResourceMemory:
+		return r.Memory
+	default:
+		if r.ScalarResources == nil {
+			return 0
+		}
+		return r.ScalarResources[rn]
 	}
-	return r.ScalarResources[rn]
 }
 
 // ResourceNames returns all resource types
-func (r *ResourceInfo) ResourceNames() []v1.ResourceName {
+func (r *Resource) ResourceNames() []v1.ResourceName {
 	resNames := []v1.ResourceName{v1.ResourceCPU, v1.ResourceMemory}
 
 	for rName := range r.ScalarResources {
@@ -288,15 +389,25 @@ func (r *ResourceInfo) ResourceNames() []v1.ResourceName {
 }
 
 // AddScalar adds a resource by a scalar value of this resource.
-func (r *ResourceInfo) AddScalar(name v1.ResourceName, quantity float64) {
+func (r *Resource) AddScalar(name v1.ResourceName, quantity float64) {
 	r.SetScalar(name, r.ScalarResources[name]+quantity)
 }
 
 // SetScalar sets a resource by a scalar value of this resource.
-func (r *ResourceInfo) SetScalar(name v1.ResourceName, quantity float64) {
+func (r *Resource) SetScalar(name v1.ResourceName, quantity float64) {
 	// Lazily allocate scalar resource map.
 	if r.ScalarResources == nil {
 		r.ScalarResources = map[v1.ResourceName]float64{}
 	}
 	r.ScalarResources[name] = quantity
+}
+
+func (r *Resource) ToResourceList() v1.ResourceList {
+	rl := make(v1.ResourceList, 2+len(r.ScalarResources))
+	rl[v1.ResourceCPU], _ = resource.ParseQuantity(strconv.FormatInt(int64(r.MilliCPU), 10) + "m")
+	rl[v1.ResourceMemory], _ = resource.ParseQuantity(strconv.FormatInt(int64(r.Memory), 10))
+	for name, quantity := range r.ScalarResources {
+		rl[name], _ = resource.ParseQuantity(strconv.FormatInt(int64(quantity), 10) + "m")
+	}
+	return rl
 }

@@ -1,10 +1,7 @@
 package cache
 
 import (
-	"context"
 	"fmt"
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -36,8 +33,6 @@ type PintaCache struct {
 
 	Jobs  map[api.JobID]*api.JobInfo
 	Nodes map[string]*api.NodeInfo
-
-	ClientConfig *rest.Config
 }
 
 func New(config *rest.Config) Cache {
@@ -59,12 +54,11 @@ func newPintaCache(config *rest.Config) Cache {
 	}
 
 	sc := &PintaCache{
-		Jobs:         make(map[api.JobID]*api.JobInfo),
-		Nodes:        make(map[string]*api.NodeInfo),
-		kubeClient:   kubeClient,
-		vcClient:     vcClient,
-		pintaClient:  client,
-		ClientConfig: config,
+		Jobs:        make(map[api.JobID]*api.JobInfo),
+		Nodes:       make(map[string]*api.NodeInfo),
+		kubeClient:  kubeClient,
+		vcClient:    vcClient,
+		pintaClient: client,
 	}
 
 	informerFactory := informers.NewSharedInformerFactory(sc.kubeClient, 0)
@@ -175,34 +169,4 @@ func (sc *PintaCache) VCClient() volcanoclientset.Interface {
 // PintaClient returns the Pinta clientSet
 func (sc *PintaCache) PintaClient() clientset.Interface {
 	return sc.pintaClient
-}
-
-func (sc *PintaCache) Commit(snapshot *api.ClusterInfo) {
-	pinta := sc.pintaClient.PintaV1()
-	for _, jobInfo := range snapshot.Jobs {
-		job := jobInfo.Job
-
-		// Ignore jobs without changes
-		if job.Status.State != pintav1.Idle && jobInfo.NumMasters == job.Status.NumMasters && jobInfo.NumReplicas == job.Status.NumReplicas {
-			continue
-		}
-
-		job.Status.NumMasters = jobInfo.NumMasters
-		job.Status.NumReplicas = jobInfo.NumReplicas
-		// Idle -> Scheduled
-		if job.Status.State == pintav1.Idle && (jobInfo.NumMasters != 0 || jobInfo.NumReplicas != 0) {
-			job.Status.State = pintav1.Scheduled
-			job.Status.LastTransitionTime = metav1.Now()
-		}
-		// Scheduled -> Idle
-		if job.Status.State == pintav1.Scheduled && (jobInfo.NumMasters == 0 && jobInfo.NumReplicas == 0) {
-			job.Status.State = pintav1.Idle
-			job.Status.LastTransitionTime = metav1.Now()
-		}
-
-		_, err := pinta.PintaJobs(jobInfo.Namespace).UpdateStatus(context.TODO(), job, metav1.UpdateOptions{})
-		if err != nil {
-			klog.Errorf("Commit failed when updating job status: %v", err)
-		}
-	}
 }

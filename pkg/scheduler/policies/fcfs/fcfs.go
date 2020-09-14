@@ -1,7 +1,7 @@
 package fcfs
 
 import (
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
+	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/session"
 	"reflect"
 )
 
@@ -21,9 +21,9 @@ func (hell *Policy) JobCustomFieldsType() reflect.Type {
 	return reflect.TypeOf((*JobCustomFields)(nil))
 }
 
-func (fcfs *Policy) Initialize(in interface{}) {}
+func (fcfs *Policy) Initialize() {}
 
-func (fcfs *Policy) Execute(snapshot *api.ClusterInfo) {
+func (fcfs *Policy) Execute(ssn *session.Session) {
 	// Do nothing
 }
 

@@ -17,12 +17,13 @@ limitations under the License.
 package cache
 
 import (
-	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
-	"k8s.io/client-go/kubernetes"
 	"reflect"
-	vcclient "volcano.sh/volcano/pkg/client/clientset/versioned"
 
+	"k8s.io/client-go/kubernetes"
+
+	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
+	vcclient "volcano.sh/volcano/pkg/client/clientset/versioned"
 )
 
 // Cache collects pods/nodes/queues information
@@ -45,6 +46,4 @@ type Cache interface {
 
 	// PintaClient returns the Pinta clientSet
 	PintaClient() clientset.Interface
-
-	Commit(snapshot *api.ClusterInfo)
 }

@@ -1,7 +1,7 @@
 package nop
 
 import (
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
+	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/session"
 	"reflect"
 )
 
@@ -24,11 +24,11 @@ func (hell *Policy) JobCustomFieldsType() reflect.Type {
 	return reflect.TypeOf((*JobCustomFields)(nil))
 }
 
-func (nop *Policy) Initialize(in interface{}) {}
+func (nop *Policy) Initialize() {}
 
-func (nop *Policy) Execute(snapshot *api.ClusterInfo) {
+func (nop *Policy) Execute(ssn *session.Session) {
 	// Job spec passthrough
-	for _, job := range snapshot.Jobs {
+	for _, job := range ssn.Jobs {
 		customFields := job.CustomFields.(*JobCustomFields)
 		job.NumMasters = customFields.NumMasters
 		job.NumReplicas = customFields.NumReplicas

@@ -36,8 +36,8 @@ type PintaJob struct {
 type PintaJobSpec struct {
 	Type    PintaJobType                 `json:"type,omitempty"`
 	Volumes []volcanov1alpha1.VolumeSpec `json:"volumes,omitempty"`
-	Master  v1.PodTemplateSpec           `json:"master,omitempty"`
-	Replica v1.PodTemplateSpec           `json:"replica,omitempty"`
+	Master  RoleSpec                     `json:"master,omitempty"`
+	Replica RoleSpec                     `json:"replica,omitempty"`
 }
 
 type PintaJobType string
@@ -48,6 +48,12 @@ const (
 	MPI          PintaJobType = "mpi"
 	ImageBuilder PintaJobType = "image-builder"
 )
+
+type RoleSpec struct {
+	NodeType  string          `json:"nodeType,omitempty"`
+	Spec      v1.PodSpec      `json:"spec,omitempty"`
+	Resources v1.ResourceList `json:"resources,omitempty"`
+}
 
 type PintaJobStatus struct {
 	State              PintaJobState `json:"state,omitempty"`

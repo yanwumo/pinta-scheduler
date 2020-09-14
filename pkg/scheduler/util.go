@@ -18,20 +18,20 @@ package scheduler
 
 import (
 	"fmt"
+	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/session"
 	"io/ioutil"
 	"strings"
 
 	yaml "gopkg.in/yaml.v2"
 
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/conf"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/policies"
 )
 
 var defaultSchedulerConf = `
 policy: "nop"
 `
 
-func loadSchedulerConf(confStr string) (policies.Policy, *conf.Configuration, error) {
+func loadSchedulerConf(confStr string) (session.Policy, *conf.Configuration, error) {
 	schedulerConf := &conf.SchedulerConfiguration{}
 
 	buf := make([]byte, len(confStr))
@@ -42,7 +42,7 @@ func loadSchedulerConf(confStr string) (policies.Policy, *conf.Configuration, er
 	}
 
 	policyName := schedulerConf.Policy
-	policy, found := policies.GetPolicy(strings.TrimSpace(policyName))
+	policy, found := session.GetPolicy(strings.TrimSpace(policyName))
 	if !found {
 		return nil, nil, fmt.Errorf("failed to found Policy %s", policyName)
 	}

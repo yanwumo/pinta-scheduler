@@ -4,7 +4,7 @@ import (
 	"bytes"
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/cache"
+	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/session"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/remotecommand"
@@ -22,9 +22,7 @@ type JobCustomFields struct {
 	CompletedIterations int
 }
 
-type Policy struct {
-	cache cache.Cache
-}
+type Policy struct{}
 
 func New() *Policy {
 	return &Policy{}
@@ -38,16 +36,14 @@ func (hell *Policy) JobCustomFieldsType() reflect.Type {
 	return reflect.TypeOf((*JobCustomFields)(nil))
 }
 
-func (hell *Policy) Initialize(in interface{}) {
-	hell.cache = in.(cache.Cache)
-}
+func (hell *Policy) Initialize() {}
 
-func (hell *Policy) Execute(snapshot *api.ClusterInfo) {
+func (hell *Policy) Execute(ssn *session.Session) {
 	klog.V(3).Infof("Begin HELL")
 	defer klog.V(3).Infof("End HELL")
 
 	// Get # completed iterations reported by the job
-	for _, job := range snapshot.Jobs {
+	for _, job := range ssn.Jobs {
 		var podName string
 		switch job.Type {
 		case pintav1.Symmetric:
@@ -59,7 +55,7 @@ func (hell *Policy) Execute(snapshot *api.ClusterInfo) {
 		default:
 			continue
 		}
-		clientset := hell.cache.Client()
+		clientset := ssn.KubeClient()
 		req := clientset.CoreV1().RESTClient().Post().Resource("pods").
 			Name(podName).
 			Namespace(job.Namespace).SubResource("exec")
@@ -72,7 +68,7 @@ func (hell *Policy) Execute(snapshot *api.ClusterInfo) {
 		}, scheme.ParameterCodec)
 
 		var stdout bytes.Buffer
-		exec, err := remotecommand.NewSPDYExecutor(hell.cache.(*cache.PintaCache).ClientConfig, "POST", req.URL())
+		exec, err := remotecommand.NewSPDYExecutor(ssn.KubeConfig(), "POST", req.URL())
 		if err != nil {
 			continue
 		}
@@ -90,7 +86,7 @@ func (hell *Policy) Execute(snapshot *api.ClusterInfo) {
 	}
 
 	// Clear previous schedules
-	for _, job := range snapshot.Jobs {
+	for _, job := range ssn.Jobs {
 		job.NumMasters = 0
 		job.NumReplicas = 0
 	}
@@ -98,7 +94,7 @@ func (hell *Policy) Execute(snapshot *api.ClusterInfo) {
 	// Calculate ratios
 	ratiosMap := make(map[api.JobID][]float64)                // Schedule based on ratios
 	remainingServiceTimesMap := make(map[api.JobID][]float64) // Fill based on remaining service times
-	for id, job := range snapshot.Jobs {
+	for id, job := range ssn.Jobs {
 		customFields := job.CustomFields.(*JobCustomFields)
 		throughput := customFields.Throughput
 		remainingIterations := customFields.Iterations - customFields.CompletedIterations
@@ -116,14 +112,14 @@ func (hell *Policy) Execute(snapshot *api.ClusterInfo) {
 	}
 
 	// Schedule
-	numNodes := len(snapshot.Nodes)
+	numNodes := len(ssn.Nodes)
 	for numNodes > 0 && len(ratiosMap) > 0 {
 		// Pick the job with minimum ratio
 		var nextJob *api.JobInfo
 		optimalNumReplicas := 0
 		minRatio := math.MaxFloat64
 		for id, ratios := range ratiosMap {
-			job := snapshot.Jobs[id]
+			job := ssn.Jobs[id]
 			numMasters := 0
 			if job.Type == pintav1.PSWorker || job.Type == pintav1.MPI {
 				numMasters = 1
@@ -155,7 +151,7 @@ func (hell *Policy) Execute(snapshot *api.ClusterInfo) {
 		minAdditionalNumReplicasToAchieveMinRemainingServiceTime := math.MaxInt32
 		var nextJob *api.JobInfo
 		for id, remainingServiceTimes := range remainingServiceTimesMap {
-			job := snapshot.Jobs[id]
+			job := ssn.Jobs[id]
 			if job.NumReplicas == 0 {
 				delete(remainingServiceTimesMap, job.UID)
 				continue

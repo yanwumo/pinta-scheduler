@@ -470,13 +470,17 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 			{
 				Name:     "ps",
 				Replicas: pintaJob.Status.NumMasters,
-				Template: pintaJob.Spec.Master,
+				Template: corev1.PodTemplateSpec{
+					Spec: pintaJob.Spec.Master.Spec,
+				},
 				Policies: nil,
 			},
 			{
 				Name:     "worker",
 				Replicas: pintaJob.Status.NumReplicas,
-				Template: pintaJob.Spec.Replica,
+				Template: corev1.PodTemplateSpec{
+					Spec: pintaJob.Spec.Replica.Spec,
+				},
 				Policies: []volcanov1alpha1.LifecyclePolicy{
 					{
 						Event:  "TaskCompleted",
@@ -490,7 +494,9 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 			{
 				Name:     "master",
 				Replicas: pintaJob.Status.NumMasters,
-				Template: pintaJob.Spec.Master,
+				Template: corev1.PodTemplateSpec{
+					Spec: pintaJob.Spec.Master.Spec,
+				},
 				Policies: []volcanov1alpha1.LifecyclePolicy{
 					{
 						Event:  "TaskCompleted",
@@ -501,7 +507,9 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 			{
 				Name:     "replica",
 				Replicas: pintaJob.Status.NumReplicas,
-				Template: pintaJob.Spec.Replica,
+				Template: corev1.PodTemplateSpec{
+					Spec: pintaJob.Spec.Replica.Spec,
+				},
 				Policies: nil,
 			},
 		}
@@ -510,7 +518,9 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 			{
 				Name:     "replica",
 				Replicas: pintaJob.Status.NumReplicas,
-				Template: pintaJob.Spec.Replica,
+				Template: corev1.PodTemplateSpec{
+					Spec: pintaJob.Spec.Replica.Spec,
+				},
 				Policies: []volcanov1alpha1.LifecyclePolicy{
 					{
 						Event:  "TaskCompleted",
@@ -524,7 +534,9 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 			{
 				Name:     "image-builder",
 				Replicas: 1,
-				Template: pintaJob.Spec.Replica,
+				Template: corev1.PodTemplateSpec{
+					Spec: pintaJob.Spec.Replica.Spec,
+				},
 				Policies: nil,
 			},
 		}

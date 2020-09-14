@@ -18,7 +18,7 @@ package scheduler
 
 import (
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/conf"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/policies"
+	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/session"
 	"time"
 
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -31,8 +31,9 @@ import (
 // Scheduler watches for new unscheduled pods for volcano. It attempts to find
 // nodes that they fit on and writes bindings back to the api server.
 type Scheduler struct {
+	kubeConfig     *rest.Config
 	cache          pintacache.Cache
-	policy         policies.Policy
+	policy         session.Policy
 	configuration  *conf.Configuration
 	schedulerConf  string
 	schedulePeriod time.Duration
@@ -45,6 +46,7 @@ func NewScheduler(
 	period time.Duration,
 ) (*Scheduler, error) {
 	scheduler := &Scheduler{
+		kubeConfig:     config,
 		schedulerConf:  schedulerConf,
 		cache:          pintacache.New(config),
 		schedulePeriod: period,
@@ -68,10 +70,12 @@ func (pc *Scheduler) runOnce() {
 
 	pc.loadSchedulerConf()
 
-	pc.policy.Initialize(pc.cache)
-	snapshot := pc.cache.Snapshot(pc.policy.JobCustomFieldsType())
-	pc.policy.Execute(snapshot)
-	pc.cache.Commit(snapshot)
+	policy := pc.policy
+
+	ssn := session.OpenSession(pc.kubeConfig, pc.cache, policy)
+	defer session.CloseSession(ssn)
+
+	policy.Execute(ssn)
 }
 
 func (pc *Scheduler) loadSchedulerConf() {

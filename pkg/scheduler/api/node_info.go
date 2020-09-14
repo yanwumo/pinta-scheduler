@@ -9,11 +9,13 @@ type NodeInfo struct {
 	Name string
 	Node *v1.Node
 
+	Type string
+
 	// The state of node
 	State NodeState
 
-	Allocatable *ResourceInfo
-	Capacity    *ResourceInfo
+	Allocatable *Resource
+	Capacity    *Resource
 
 	// Used to store custom information
 	Others     map[string]interface{}
@@ -62,6 +64,7 @@ func NewNodeInfo(node *v1.Node) *NodeInfo {
 		nodeinfo.Allocatable = NewResource(node.Status.Allocatable)
 		nodeinfo.Capacity = NewResource(node.Status.Capacity)
 	}
+	nodeinfo.setNodeType(node)
 	nodeinfo.setNodeGPUInfo(node)
 	nodeinfo.setNodeState(node)
 
@@ -77,6 +80,10 @@ func (ni *NodeInfo) Clone() *NodeInfo {
 // Ready returns whether node is ready for scheduling
 func (ni *NodeInfo) Ready() bool {
 	return ni.State.Phase == Ready
+}
+
+func (ni *NodeInfo) setNodeType(node *v1.Node) {
+	ni.Type = node.GetLabels()["pinta.qed.usc.edu/type"]
 }
 
 func (ni *NodeInfo) setNodeState(node *v1.Node) {
@@ -135,6 +142,7 @@ func (ni *NodeInfo) setNodeGPUInfo(node *v1.Node) {
 
 // SetNode sets kubernetes node object to nodeInfo object
 func (ni *NodeInfo) SetNode(node *v1.Node) {
+	ni.setNodeType(node)
 	ni.setNodeState(node)
 	ni.setNodeGPUInfo(node)
 
