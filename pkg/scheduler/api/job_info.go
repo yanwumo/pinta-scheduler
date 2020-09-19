@@ -43,13 +43,15 @@ func NewJobInfo(uid JobID, job *pintav1.PintaJob) *JobInfo {
 	return jobInfo
 }
 
-func (ji *JobInfo) ParseCustomFields(customFieldsType reflect.Type) {
+func (ji *JobInfo) ParseCustomFields(customFieldsType reflect.Type) error {
 	customFieldsInterface := reflect.New(customFieldsType.Elem()).Interface()
 	customFieldsStr := ji.Job.GetAnnotations()["pinta.qed.usc.edu/custom-fields"]
 	err := yaml.Unmarshal([]byte(customFieldsStr), customFieldsInterface)
-	if err == nil {
-		ji.CustomFields = customFieldsInterface
+	if err != nil {
+		return err
 	}
+	ji.CustomFields = customFieldsInterface
+	return nil
 }
 
 func (ji *JobInfo) Clone() *JobInfo {

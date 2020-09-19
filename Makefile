@@ -20,6 +20,11 @@ gen-all: codegen vendor
 verify:
 	$(VERIFY)
 
+.PHONY: unit-test
+unit-test:
+	go clean -testcache
+	go list ./... | grep -v e2e | xargs go test -p 8 -v -race
+
 .PHONY: run-local
 run-local:
 	./hack/install_local.sh

@@ -83,6 +83,9 @@ func (ni *NodeInfo) Ready() bool {
 }
 
 func (ni *NodeInfo) setNodeType(node *v1.Node) {
+	if node == nil {
+		return
+	}
 	ni.Type = node.GetLabels()["pinta.qed.usc.edu/type"]
 }
 

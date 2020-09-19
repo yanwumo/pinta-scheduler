@@ -18,16 +18,14 @@ package conf
 
 // SchedulerConfiguration defines the configuration of scheduler.
 type SchedulerConfiguration struct {
-	// Actions defines the actions list of scheduler in order
+	// policies defines the policies list of scheduler in order
 	Policy string `yaml:"policy"`
-	// Configurations is configuration for actions
+	// Configurations is configuration for policies
 	Configuration Configuration `yaml:"configuration"`
 }
 
-// Configuration is configuration of action
+// Configuration is configuration of policy
 type Configuration struct {
-	// Name is name of action
-	Name string `yaml:"name"`
-	// Arguments defines the different arguments that can be given to specified action
+	// Arguments defines the different arguments that can be given to specified policy
 	Arguments map[string]string `yaml:"arguments"`
 }

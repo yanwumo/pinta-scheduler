@@ -12,6 +12,11 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - run: make verify
+  run-unit-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - run: make unit-test
   run-local-test-on-kind:
     runs-on: ubuntu-latest
     steps:

@@ -137,7 +137,10 @@ func (sc *PintaCache) Snapshot(jobCustomFieldsType reflect.Type) *api.ClusterInf
 		defer wg.Done()
 
 		clonedJob := value.Clone()
-		clonedJob.ParseCustomFields(jobCustomFieldsType)
+		err := clonedJob.ParseCustomFields(jobCustomFieldsType)
+		if err != nil {
+			klog.Errorf("Cannot parse custom fields for job %v: %v", clonedJob.Name, err)
+		}
 
 		cloneJobLock.Lock()
 		snapshot.Jobs[value.UID] = clonedJob

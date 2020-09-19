@@ -6,7 +6,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	v1helper "k8s.io/kubernetes/pkg/apis/core/v1/helper"
 	"math"
-	"strconv"
 )
 
 // Resource struct defines all the resource type
@@ -404,10 +403,10 @@ func (r *Resource) SetScalar(name v1.ResourceName, quantity float64) {
 
 func (r *Resource) ToResourceList() v1.ResourceList {
 	rl := make(v1.ResourceList, 2+len(r.ScalarResources))
-	rl[v1.ResourceCPU], _ = resource.ParseQuantity(strconv.FormatInt(int64(r.MilliCPU), 10) + "m")
-	rl[v1.ResourceMemory], _ = resource.ParseQuantity(strconv.FormatInt(int64(r.Memory), 10))
+	rl[v1.ResourceCPU] = *resource.NewScaledQuantity(int64(r.MilliCPU), -3)
+	rl[v1.ResourceMemory] = *resource.NewQuantity(int64(r.Memory), resource.BinarySI)
 	for name, quantity := range r.ScalarResources {
-		rl[name], _ = resource.ParseQuantity(strconv.FormatInt(int64(quantity), 10) + "m")
+		rl[name] = *resource.NewScaledQuantity(int64(quantity), -3)
 	}
 	return rl
 }
