@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"github.com/qed-usc/pinta-scheduler/pkg/controller/framework"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -37,12 +38,14 @@ import (
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
 	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	pintascheme "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/scheme"
-	informers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pintascheduler/v1"
+	informers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions"
+	pintajobinformers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pintascheduler/v1"
 	listers "github.com/qed-usc/pinta-scheduler/pkg/generated/listers/pintascheduler/v1"
 
 	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 	volcano "volcano.sh/volcano/pkg/client/clientset/versioned"
-	volcanoinformers "volcano.sh/volcano/pkg/client/informers/externalversions/batch/v1alpha1"
+	volcanoinformers "volcano.sh/volcano/pkg/client/informers/externalversions"
+	vcjobinformers "volcano.sh/volcano/pkg/client/informers/externalversions/batch/v1alpha1"
 	volcanolisters "volcano.sh/volcano/pkg/client/listers/batch/v1alpha1"
 )
 
@@ -63,21 +66,24 @@ const (
 	MessageResourceSynced = "PintaJob synced successfully"
 )
 
+func init() {
+	_ = framework.RegisterController(&Controller{})
+}
+
 // Controller is the controller implementation for PintaJob resources
 type Controller struct {
-	// kubeclientset is a standard kubernetes clientset
-	kubeclientset kubernetes.Interface
-	// pintaclientset is a clientset for our own API group
-	pintaclientset clientset.Interface
-	// volcanoclientset is a clientset for Volcano management
-	volcanoclientset volcano.Interface
+	kubeClient  kubernetes.Interface
+	vcClient    volcano.Interface
+	pintaClient clientset.Interface
 
-	//deploymentsLister appslisters.DeploymentLister
-	//deploymentsSynced cache.InformerSynced
-	volcanoJobsLister volcanolisters.JobLister
-	volcanoJobsSynced cache.InformerSynced
-	pintaJobsLister   listers.PintaJobLister
-	pintaJobsSynced   cache.InformerSynced
+	vcJobInformer    vcjobinformers.JobInformer
+	pintaJobInformer pintajobinformers.PintaJobInformer
+
+	vcJobLister volcanolisters.JobLister
+	vcJobSynced func() bool
+
+	pintaJobLister listers.PintaJobLister
+	pintaJobSynced func() bool
 
 	// workqueue is a rate limited work queue. This is used to queue work to be
 	// processed instead of performing it as soon as a change happens. This
@@ -88,15 +94,17 @@ type Controller struct {
 	// recorder is an event recorder for recording Event resources to the
 	// Kubernetes API.
 	recorder record.EventRecorder
+	workers  int
 }
 
-// NewController returns a new Pinta controller
-func NewController(
-	kubeclientset kubernetes.Interface,
-	pintaclientset clientset.Interface,
-	volcanoclientset volcano.Interface,
-	volcanoJobInformer volcanoinformers.JobInformer,
-	pintaJobInformer informers.PintaJobInformer) *Controller {
+func (c *Controller) Name() string {
+	return "pinta-controller"
+}
+
+func (c *Controller) Initialize(opt *framework.ControllerOption) error {
+	c.kubeClient = opt.KubeClient
+	c.pintaClient = opt.PintaClient
+	c.vcClient = opt.VolcanoClient
 
 	// Create event broadcaster
 	// Add pinta-scheduler types to the default Kubernetes Scheme so Events can be
@@ -105,27 +113,29 @@ func NewController(
 	klog.V(4).Info("Creating event broadcaster")
 	eventBroadcaster := record.NewBroadcaster()
 	eventBroadcaster.StartLogging(klog.Infof)
-	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: kubeclientset.CoreV1().Events("")})
+	eventBroadcaster.StartRecordingToSink(&typedcorev1.EventSinkImpl{Interface: c.kubeClient.CoreV1().Events("")})
 	recorder := eventBroadcaster.NewRecorder(scheme.Scheme, corev1.EventSource{Component: controllerAgentName})
 
-	controller := &Controller{
-		kubeclientset:     kubeclientset,
-		pintaclientset:    pintaclientset,
-		volcanoclientset:  volcanoclientset,
-		volcanoJobsLister: volcanoJobInformer.Lister(),
-		volcanoJobsSynced: volcanoJobInformer.Informer().HasSynced,
-		pintaJobsLister:   pintaJobInformer.Lister(),
-		pintaJobsSynced:   pintaJobInformer.Informer().HasSynced,
-		workqueue:         workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "PintaJobs"),
-		recorder:          recorder,
-	}
+	vcInformerFactory := volcanoinformers.NewSharedInformerFactory(c.vcClient, time.Second*30)
+	c.vcJobInformer = vcInformerFactory.Batch().V1alpha1().Jobs()
+	c.vcJobLister = c.vcJobInformer.Lister()
+	c.vcJobSynced = c.vcJobInformer.Informer().HasSynced
+
+	pintaInformerFactory := informers.NewSharedInformerFactory(c.pintaClient, time.Second*30)
+	c.pintaJobInformer = pintaInformerFactory.Pinta().V1().PintaJobs()
+	c.pintaJobLister = c.pintaJobInformer.Lister()
+	c.pintaJobSynced = c.pintaJobInformer.Informer().HasSynced
+
+	c.workqueue = workqueue.NewNamedRateLimitingQueue(workqueue.DefaultControllerRateLimiter(), "PintaJobs")
+	c.recorder = recorder
+	c.workers = opt.WorkerNum
 
 	klog.Info("Setting up event handlers")
 	// Set up an event handler for when PintaJob resources change
-	pintaJobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.enqueuePintaJob,
+	c.pintaJobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: c.enqueuePintaJob,
 		UpdateFunc: func(old, new interface{}) {
-			controller.enqueuePintaJob(new)
+			c.enqueuePintaJob(new)
 		},
 	})
 	// Set up an event handler for when Deployment resources change. This
@@ -134,8 +144,8 @@ func NewController(
 	// processing. This way, we don't need to implement custom logic for
 	// handling Deployment resources. More info on this pattern:
 	// https://github.com/kubernetes/community/blob/8cafef897a22026d42f5e5bb3f104febe7e29830/contributors/devel/controllers.md
-	volcanoJobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
-		AddFunc: controller.handleObject,
+	c.vcJobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc: c.handleObject,
 		UpdateFunc: func(old, new interface{}) {
 			newVolcanoJob := new.(*volcanov1alpha1.Job)
 			oldVolcanoJob := old.(*volcanov1alpha1.Job)
@@ -144,42 +154,43 @@ func NewController(
 				// Two different versions of the same Deployment will always have different RVs.
 				return
 			}
-			controller.handleObject(new)
+			c.handleObject(new)
 		},
-		DeleteFunc: controller.handleObject,
+		DeleteFunc: c.handleObject,
 	})
 
-	return controller
+	return nil
 }
 
 // Run will set up the event handlers for types we are interested in, as well
 // as syncing informer caches and starting workers. It will block until stopCh
 // is closed, at which point it will shutdown the workqueue and wait for
 // workers to finish processing their current work items.
-func (c *Controller) Run(threadiness int, stopCh <-chan struct{}) error {
+func (c *Controller) Run(stopCh <-chan struct{}) {
 	defer utilruntime.HandleCrash()
 	defer c.workqueue.ShutDown()
 
 	// Start the informer factories to begin populating the informer caches
 	klog.Info("Starting PintaJob controller")
+	go c.vcJobInformer.Informer().Run(stopCh)
+	go c.pintaJobInformer.Informer().Run(stopCh)
 
 	// Wait for the caches to be synced before starting workers
 	klog.Info("Waiting for informer caches to sync")
-	if ok := cache.WaitForCacheSync(stopCh, c.volcanoJobsSynced, c.pintaJobsSynced); !ok {
-		return fmt.Errorf("failed to wait for caches to sync")
+	if ok := cache.WaitForCacheSync(stopCh, c.vcJobSynced, c.pintaJobSynced); !ok {
+		klog.Errorf("failed to wait for caches to sync")
+		return
 	}
 
 	klog.Info("Starting workers")
 	// Launch two workers to process PintaJob resources
-	for i := 0; i < threadiness; i++ {
+	for i := 0; i < c.workers; i++ {
 		go wait.Until(c.runWorker, time.Second, stopCh)
 	}
 
 	klog.Info("Started workers")
 	<-stopCh
 	klog.Info("Shutting down workers")
-
-	return nil
 }
 
 // runWorker is a long-running function that will continually call the
@@ -257,7 +268,7 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the PintaJob resource with this namespace/name
-	pintaJob, err := c.pintaJobsLister.PintaJobs(namespace).Get(name)
+	pintaJob, err := c.pintaJobLister.PintaJobs(namespace).Get(name)
 	if err != nil {
 		// The PintaJob resource may no longer exist, in which case we stop
 		// processing.
@@ -279,18 +290,18 @@ func (c *Controller) syncHandler(key string) error {
 	}
 
 	// Get the Volcano job with the name specified in PintaJob.spec
-	volcanoJob, err := c.volcanoJobsLister.Jobs(pintaJob.Namespace).Get(volcanoJobName)
+	volcanoJob, err := c.vcJobLister.Jobs(pintaJob.Namespace).Get(volcanoJobName)
 	// If the resource doesn't exist, we'll create it
 	// Idle is the only state that PintaJob doesn't have a Volcano Job mapping
 	if errors.IsNotFound(err) {
 		err = nil
 		volcanoJob = nil
 		if pintaJob.Status.State != pintav1.Idle && pintaJob.Status.State != "" {
-			volcanoJob, err = c.volcanoclientset.BatchV1alpha1().Jobs(pintaJob.Namespace).Create(context.TODO(), newVCJob(pintaJob), metav1.CreateOptions{})
+			volcanoJob, err = c.vcClient.BatchV1alpha1().Jobs(pintaJob.Namespace).Create(context.TODO(), newVCJob(pintaJob), metav1.CreateOptions{})
 		}
 	} else {
 		if pintaJob.Status.State == pintav1.Idle || pintaJob.Status.State == "" {
-			err = c.volcanoclientset.BatchV1alpha1().Jobs(pintaJob.Namespace).Delete(context.TODO(), volcanoJobName, metav1.DeleteOptions{})
+			err = c.vcClient.BatchV1alpha1().Jobs(pintaJob.Namespace).Delete(context.TODO(), volcanoJobName, metav1.DeleteOptions{})
 			volcanoJob = nil
 		}
 	}
@@ -339,7 +350,7 @@ func (c *Controller) syncHandler(key string) error {
 			for _, task := range volcanoJob.Spec.Tasks {
 				volcanoJob.Spec.MinAvailable += task.Replicas
 			}
-			volcanoJob, err = c.volcanoclientset.BatchV1alpha1().Jobs(pintaJob.Namespace).Update(context.TODO(), volcanoJob, metav1.UpdateOptions{})
+			volcanoJob, err = c.vcClient.BatchV1alpha1().Jobs(pintaJob.Namespace).Update(context.TODO(), volcanoJob, metav1.UpdateOptions{})
 		}
 	}
 
@@ -398,7 +409,7 @@ func (c *Controller) updatePintaJobStatus(pintaJob *pintav1.PintaJob, volcanoJob
 	// which is ideal for ensuring nothing other than resource status has been updated.
 	//
 	// Subresource is enabled.
-	_, err := c.pintaclientset.PintaV1().PintaJobs(pintaJob.Namespace).UpdateStatus(context.TODO(), pintaJobCopy, metav1.UpdateOptions{})
+	_, err := c.pintaClient.PintaV1().PintaJobs(pintaJob.Namespace).UpdateStatus(context.TODO(), pintaJobCopy, metav1.UpdateOptions{})
 	return err
 }
 
@@ -444,7 +455,7 @@ func (c *Controller) handleObject(obj interface{}) {
 			return
 		}
 
-		pintaJob, err := c.pintaJobsLister.PintaJobs(object.GetNamespace()).Get(ownerRef.Name)
+		pintaJob, err := c.pintaJobLister.PintaJobs(object.GetNamespace()).Get(ownerRef.Name)
 		if err != nil {
 			klog.V(4).Infof("ignoring orphaned object '%s' of pintaJob '%s'", object.GetSelfLink(), ownerRef.Name)
 			return

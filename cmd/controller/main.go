@@ -18,23 +18,25 @@ package main
 
 import (
 	"flag"
+	"fmt"
+	"github.com/qed-usc/pinta-scheduler/cmd/controller/app"
+	"github.com/qed-usc/pinta-scheduler/cmd/controller/app/options"
+	"github.com/spf13/pflag"
+	"k8s.io/apimachinery/pkg/util/wait"
+	cliflag "k8s.io/component-base/cli/flag"
+	"os"
+	"runtime"
 	"time"
+	"volcano.sh/volcano/pkg/version"
 
-	kubeinformers "k8s.io/client-go/informers"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/klog"
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
-	"github.com/qed-usc/pinta-scheduler/pkg/controller"
-
-	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
-	informers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions"
-	"github.com/qed-usc/pinta-scheduler/pkg/signals"
-	volcanoclientset "volcano.sh/volcano/pkg/client/clientset/versioned"
-	volcanoinformers "volcano.sh/volcano/pkg/client/informers/externalversions"
+	_ "github.com/qed-usc/pinta-scheduler/pkg/controller"
 )
+
+var logFlushFreq = pflag.Duration("log-flush-frequency", 5*time.Second, "Maximum number of seconds between log flushes")
 
 var (
 	masterURL  string
@@ -42,48 +44,28 @@ var (
 )
 
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
 	klog.InitFlags(nil)
-	flag.Parse()
 
-	// set up signals so we handle the first shutdown signal gracefully
-	stopCh := signals.SetupSignalHandler()
+	s := options.NewServerOption()
+	s.AddFlags(pflag.CommandLine)
 
-	cfg, err := clientcmd.BuildConfigFromFlags(masterURL, kubeconfig)
-	if err != nil {
-		klog.Fatalf("Error building kubeconfig: %s", err.Error())
+	cliflag.InitFlags()
+
+	if s.PrintVersion {
+		version.PrintVersionAndExit()
 	}
-
-	kubeClient, err := kubernetes.NewForConfig(cfg)
-	if err != nil {
-		klog.Fatalf("Error building kubernetes clientset: %s", err.Error())
+	if err := s.CheckOptionOrDie(); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
+	// The default klog flush interval is 30 seconds, which is frighteningly long.
+	go wait.Until(klog.Flush, *logFlushFreq, wait.NeverStop)
+	defer klog.Flush()
 
-	pintaClient, err := clientset.NewForConfig(cfg)
-	if err != nil {
-		klog.Fatalf("Error building pinta clientset: %s", err.Error())
-	}
-
-	volcanoClient, err := volcanoclientset.NewForConfig(cfg)
-	if err != nil {
-		klog.Fatalf("Error building volcano clientset: %s", err.Error())
-	}
-
-	kubeInformerFactory := kubeinformers.NewSharedInformerFactory(kubeClient, time.Second*30)
-	pintaInformerFactory := informers.NewSharedInformerFactory(pintaClient, time.Second*30)
-	volcanoInformerFactory := volcanoinformers.NewSharedInformerFactory(volcanoClient, time.Second*30)
-
-	pintaController := controller.NewController(kubeClient, pintaClient, volcanoClient,
-		volcanoInformerFactory.Batch().V1alpha1().Jobs(),
-		pintaInformerFactory.Pinta().V1().PintaJobs())
-
-	// notice that there is no need to run Start methods in a separate goroutine. (i.e. go kubeInformerFactory.Start(stopCh)
-	// Start method is non-blocking and runs all registered informers in a dedicated goroutine.
-	kubeInformerFactory.Start(stopCh)
-	pintaInformerFactory.Start(stopCh)
-	volcanoInformerFactory.Start(stopCh)
-
-	if err = pintaController.Run(2, stopCh); err != nil {
-		klog.Fatalf("Error running controller: %s", err.Error())
+	if err := app.Run(s); err != nil {
+		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
 	}
 }
 
