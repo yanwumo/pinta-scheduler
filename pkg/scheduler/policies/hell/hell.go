@@ -125,7 +125,24 @@ func (hell *Policy) Execute(ssn *session.Session) {
 				numMasters = 1
 			}
 			for i := 0; i < numNodes-numMasters && i < len(ratios); i++ {
+				change := false
 				if ratios[i] < minRatio {
+					change = true
+				} else if ratios[i] == minRatio {
+					if nextJob == nil {
+						continue
+					}
+					// Break ties
+					oldTime := nextJob.CreationTimestamp
+					if job.CreationTimestamp.Before(&oldTime) {
+						change = true
+					} else if job.CreationTimestamp.Equal(&oldTime) {
+						if job.UID < nextJob.UID {
+							change = true
+						}
+					}
+				}
+				if change {
 					nextJob = job
 					optimalNumReplicas = i + 1
 					minRatio = ratios[i]
@@ -148,6 +165,7 @@ func (hell *Policy) Execute(ssn *session.Session) {
 
 	// Fill
 	for numNodes > 0 && len(remainingServiceTimesMap) > 0 {
+		// Pick the job with min # replicas to achieve min remaining service time
 		minAdditionalNumReplicasToAchieveMinRemainingServiceTime := math.MaxInt32
 		var nextJob *api.JobInfo
 		for id, remainingServiceTimes := range remainingServiceTimesMap {
@@ -167,8 +185,24 @@ func (hell *Policy) Execute(ssn *session.Session) {
 					numAdditionalReplicasToAchieveMinRemainingServiceTime = additionalNodes
 				}
 			}
-
+			change := false
 			if numAdditionalReplicasToAchieveMinRemainingServiceTime < minAdditionalNumReplicasToAchieveMinRemainingServiceTime {
+				change = true
+			} else if numAdditionalReplicasToAchieveMinRemainingServiceTime == minAdditionalNumReplicasToAchieveMinRemainingServiceTime {
+				if nextJob == nil {
+					continue
+				}
+				// Break ties
+				oldTime := nextJob.CreationTimestamp
+				if job.CreationTimestamp.Before(&oldTime) {
+					change = true
+				} else if job.CreationTimestamp.Equal(&oldTime) {
+					if job.UID < nextJob.UID {
+						change = true
+					}
+				}
+			}
+			if change {
 				minAdditionalNumReplicasToAchieveMinRemainingServiceTime = numAdditionalReplicasToAchieveMinRemainingServiceTime
 				nextJob = job
 			}
