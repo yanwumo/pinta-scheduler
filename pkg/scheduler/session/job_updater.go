@@ -81,6 +81,10 @@ func (ju *jobUpdater) updateJob(index int) {
 }
 
 func (ju *jobUpdater) updateRoleSpec(role *pintav1.RoleSpec) {
+	if len(role.Spec.Containers) == 0 {
+		return
+	}
+
 	// nodeSelector
 	if role.NodeType != "" {
 		role.Spec.NodeSelector["pinta.qed.usc.edu/type"] = role.NodeType
