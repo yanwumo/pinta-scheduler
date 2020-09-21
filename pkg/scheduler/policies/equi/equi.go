@@ -17,7 +17,7 @@ func (equi *Policy) Name() string {
 	return "equi"
 }
 
-func (hell *Policy) JobCustomFieldsType() reflect.Type {
+func (equi *Policy) JobCustomFieldsType() reflect.Type {
 	return reflect.TypeOf((*JobCustomFields)(nil))
 }
 
