@@ -14,9 +14,12 @@ then
     kind create cluster
 fi
 
+export KUBECONFIG=$HOME/.kind/config
 
-kind create cluster --config ./hack/kind_cluster.yaml
-kubectl cluster-info --context kind-kind
+kind create cluster --config ./hack/kind_cluster.yaml  --kubeconfig $KUBECONFIG
 
 kubectl apply -f ./artifacts/examples/crd.yaml
 kubectl wait --timeout=5m --for=condition=Established crd $(kubectl get crd --output=jsonpath='{.items[*].metadata.name}')
+
+
+echo -e '====================\nTo use the cluster:\nexport KUBECONFIG='$KUBECONFIG '\n===================='
