@@ -30,7 +30,7 @@ type PintaJob struct {
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
 	Spec   PintaJobSpec   `json:"spec,omitempty"`
-	Status PintaJobStatus `json:"status,omitempty"`
+	Status []PintaJobStatus `json:"status,omitempty"`
 }
 
 type PintaJobSpec struct {

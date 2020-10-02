@@ -27,14 +27,18 @@ type JobInfo struct {
 }
 
 func NewJobInfo(uid JobID, job *pintav1.PintaJob) *JobInfo {
+	var lastPintaJobStatus pintav1.PintaJobStatus
+	if len(job.Status) > 0 {
+		lastPintaJobStatus = job.Status[0]
+	}
 	jobInfo := &JobInfo{
 		UID:       uid,
 		Name:      job.Name,
 		Namespace: job.Namespace,
 		Type:      job.Spec.Type,
 
-		NumMasters:  job.Status.NumMasters,
-		NumReplicas: job.Status.NumReplicas,
+		NumMasters:  lastPintaJobStatus.NumMasters,
+		NumReplicas: lastPintaJobStatus.NumReplicas,
 
 		CreationTimestamp: job.GetCreationTimestamp(),
 

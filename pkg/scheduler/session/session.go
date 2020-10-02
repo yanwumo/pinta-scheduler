@@ -21,7 +21,7 @@ type Session struct {
 
 	Jobs      map[api.JobID]*api.JobInfo
 	Nodes     map[string]*api.NodeInfo
-	NodeTypes map[string]*api.TypeInfo
+	NodeTypes map[string]*api.NodeTypeInfo
 }
 
 func OpenSession(config *rest.Config, cache cache.Cache, policy Policy) *Session {
@@ -33,7 +33,7 @@ func OpenSession(config *rest.Config, cache cache.Cache, policy Policy) *Session
 
 		Jobs:      map[api.JobID]*api.JobInfo{},
 		Nodes:     map[string]*api.NodeInfo{},
-		NodeTypes: map[string]*api.TypeInfo{},
+		NodeTypes: map[string]*api.NodeTypeInfo{},
 	}
 
 	snapshot := cache.Snapshot(policy.JobCustomFieldsType())
@@ -44,13 +44,9 @@ func OpenSession(config *rest.Config, cache cache.Cache, policy Policy) *Session
 	for _, node := range ssn.Nodes {
 		nodeType, found := ssn.NodeTypes[node.Type]
 		if found {
-			nodeType.Resource.SetMinResource(node.Allocatable)
-			nodeType.Nodes = append(nodeType.Nodes, node)
+			nodeType.AddNode(node)
 		} else {
-			ssn.NodeTypes[node.Type] = &api.TypeInfo{
-				Resource: node.Allocatable.Clone(),
-				Nodes:    []*api.NodeInfo{node},
-			}
+			ssn.NodeTypes[node.Type] = api.NewNodeTypeInfo(node)
 		}
 	}
 

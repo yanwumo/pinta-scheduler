@@ -13,6 +13,7 @@ require (
 	k8s.io/component-base v0.18.5
 	k8s.io/klog v1.0.0
 	k8s.io/kubernetes v1.18.5
+	sigs.k8s.io/yaml v1.2.0
 	volcano.sh/volcano v1.0.1
 )
 

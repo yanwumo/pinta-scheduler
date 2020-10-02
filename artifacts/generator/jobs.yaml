@@ -1,0 +1,48 @@
+templates:
+- job:
+    apiVersion: pinta.qed.usc.edu/v1
+    kind: PintaJob
+    metadata:
+      name: ""
+      annotations:
+        pinta.qed.usc.edu/custom-fields: |
+          batchSize: 32
+          iterations: 100
+          throughput:
+          - 10
+          - 20
+          - 30
+          - 38
+          - 46
+          - 49
+          - 50
+          - 50
+    spec:
+      type: symmetric
+      replica:
+        spec:
+          containers:
+            - name: test
+              image: yanwumo/dummyjob
+              workingDir: /
+              command:
+                - sh
+                - -c
+                - python dummyjob.py
+              env:
+                - name: PYTHONUNBUFFERED
+                  value: "1"
+                - name: BATCH_SIZE
+                  value: "32"
+                - name: ITERATIONS
+                  value: "100"
+                - name: THROUGHPUT
+                  value: "10"
+          restartPolicy: OnFailure
+        resources:
+          node: "1"
+  weight: 1
+jobs:
+  poisson:
+    rate: 0.05
+    numJobs: 10

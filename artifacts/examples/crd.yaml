@@ -29,19 +29,21 @@ spec:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
             status:
-              type: object
-              properties:
-                state:
-                  type: string
-                lastTransitionTime:
-                  format: date-time
-                  type: string
-                numMasters:
-                  format: int32
-                  type: integer
-                numReplicas:
-                  format: int32
-                  type: integer
+              type: array
+              items:
+                type: object
+                properties:
+                  state:
+                    type: string
+                  lastTransitionTime:
+                    format: date-time
+                    type: string
+                  numMasters:
+                    format: int32
+                    type: integer
+                  numReplicas:
+                    format: int32
+                    type: integer
       subresources:
         status: {}
       additionalPrinterColumns:
@@ -50,13 +52,13 @@ spec:
           jsonPath: .spec.type
         - name: Masters
           type: integer
-          jsonPath: .status.numMasters
+          jsonPath: .status[0].numMasters
         - name: Replicas
           type: integer
-          jsonPath: .status.numReplicas
+          jsonPath: .status[0].numReplicas
         - name: Status
           type: string
-          jsonPath: .status.state
+          jsonPath: .status[0].state
   scope: Namespaced
   names:
     kind: PintaJob

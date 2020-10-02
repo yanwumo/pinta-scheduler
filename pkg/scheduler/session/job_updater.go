@@ -55,24 +55,39 @@ func (ju *jobUpdater) updateJob(index int) {
 		}
 	}
 
+	var lastPintaJobStatus pintav1.PintaJobStatus
+	if len(job.Status) > 0 {
+		lastPintaJobStatus = job.Status[0]
+	}
+	oldState := lastPintaJobStatus.State
+	newState := oldState
 	// Update job status
 	// Ignore jobs without changes
-	if job.Status.State != pintav1.Idle && jobInfo.NumMasters == job.Status.NumMasters && jobInfo.NumReplicas == job.Status.NumReplicas {
+	if oldState != pintav1.Idle && jobInfo.NumMasters == lastPintaJobStatus.NumMasters && jobInfo.NumReplicas == lastPintaJobStatus.NumReplicas {
 		return
 	}
 
-	job.Status.NumMasters = jobInfo.NumMasters
-	job.Status.NumReplicas = jobInfo.NumReplicas
 	// Idle -> Scheduled
-	if job.Status.State == pintav1.Idle && (jobInfo.NumMasters != 0 || jobInfo.NumReplicas != 0) {
-		job.Status.State = pintav1.Scheduled
-		job.Status.LastTransitionTime = metav1.Now()
+	if oldState == pintav1.Idle && (jobInfo.NumMasters != 0 || jobInfo.NumReplicas != 0) {
+		newState = pintav1.Scheduled
 	}
 	// Scheduled -> Idle
-	if job.Status.State == pintav1.Scheduled && (jobInfo.NumMasters == 0 && jobInfo.NumReplicas == 0) {
-		job.Status.State = pintav1.Idle
-		job.Status.LastTransitionTime = metav1.Now()
+	if oldState == pintav1.Scheduled && (jobInfo.NumMasters == 0 && jobInfo.NumReplicas == 0) {
+		newState = pintav1.Idle
 	}
+
+	if newState == oldState {
+		return
+	}
+
+	job.Status = append([]pintav1.PintaJobStatus{
+		{
+			State:              newState,
+			LastTransitionTime: metav1.Now(),
+			NumMasters:         jobInfo.NumMasters,
+			NumReplicas:        jobInfo.NumReplicas,
+		},
+	}, job.Status...)
 
 	_, err = pinta.PintaJobs(jobInfo.Namespace).UpdateStatus(context.TODO(), job, metav1.UpdateOptions{})
 	if err != nil {
@@ -86,9 +101,11 @@ func (ju *jobUpdater) updateRoleSpec(role *pintav1.RoleSpec) {
 	}
 
 	// nodeSelector
+	// TODO: move nodeSelector setting to controller
 	if role.NodeType != "" {
 		role.Spec.NodeSelector["pinta.qed.usc.edu/type"] = role.NodeType
 	}
+	// TODO: move resource translation to controller
 	fractionNode, found := role.Resources["node"]
 	if found && !fractionNode.IsZero() {
 		one, _ := resource.ParseQuantity("1")

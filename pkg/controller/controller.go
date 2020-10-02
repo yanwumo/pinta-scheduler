@@ -280,6 +280,11 @@ func (c *Controller) syncHandler(key string) error {
 		return err
 	}
 
+	var lastPintaJobStatus pintav1.PintaJobStatus
+	if len(pintaJob.Status) > 0 {
+		lastPintaJobStatus = pintaJob.Status[0]
+	}
+
 	volcanoJobName := pintaJob.Name
 	if volcanoJobName == "" {
 		// We choose to absorb the error here as the worker would requeue the
@@ -296,11 +301,11 @@ func (c *Controller) syncHandler(key string) error {
 	if errors.IsNotFound(err) {
 		err = nil
 		volcanoJob = nil
-		if pintaJob.Status.State != pintav1.Idle && pintaJob.Status.State != "" {
+		if lastPintaJobStatus.State != pintav1.Idle && lastPintaJobStatus.State != "" {
 			volcanoJob, err = c.vcClient.BatchV1alpha1().Jobs(pintaJob.Namespace).Create(context.TODO(), newVCJob(pintaJob), metav1.CreateOptions{})
 		}
 	} else {
-		if pintaJob.Status.State == pintav1.Idle || pintaJob.Status.State == "" {
+		if lastPintaJobStatus.State == pintav1.Idle || lastPintaJobStatus.State == "" {
 			err = c.vcClient.BatchV1alpha1().Jobs(pintaJob.Namespace).Delete(context.TODO(), volcanoJobName, metav1.DeleteOptions{})
 			volcanoJob = nil
 		}
@@ -328,14 +333,14 @@ func (c *Controller) syncHandler(key string) error {
 		consistent := true
 		for i, task := range volcanoJob.Spec.Tasks {
 			if task.Name == "ps" || task.Name == "master" {
-				if task.Replicas != pintaJob.Status.NumMasters {
+				if task.Replicas != lastPintaJobStatus.NumMasters {
 					consistent = false
-					volcanoJob.Spec.Tasks[i].Replicas = pintaJob.Status.NumMasters
+					volcanoJob.Spec.Tasks[i].Replicas = lastPintaJobStatus.NumMasters
 				}
 			} else if task.Name == "worker" || task.Name == "replica" {
-				if task.Replicas != pintaJob.Status.NumReplicas {
+				if task.Replicas != lastPintaJobStatus.NumReplicas {
 					consistent = false
-					volcanoJob.Spec.Tasks[i].Replicas = pintaJob.Status.NumReplicas
+					volcanoJob.Spec.Tasks[i].Replicas = lastPintaJobStatus.NumReplicas
 				}
 			} else if task.Name == "image-builder" {
 				if task.Replicas != 1 {
@@ -373,7 +378,11 @@ func (c *Controller) syncHandler(key string) error {
 }
 
 func (c *Controller) updatePintaJobStatus(pintaJob *pintav1.PintaJob, volcanoJob *volcanov1alpha1.Job) error {
-	oldState := pintaJob.Status.State
+	var lastPintaJobStatus pintav1.PintaJobStatus
+	if len(pintaJob.Status) > 0 {
+		lastPintaJobStatus = pintaJob.Status[0]
+	}
+	oldState := lastPintaJobStatus.State
 	newState := oldState
 	if oldState == "" {
 		newState = pintav1.Idle
@@ -381,7 +390,7 @@ func (c *Controller) updatePintaJobStatus(pintaJob *pintav1.PintaJob, volcanoJob
 	if volcanoJob != nil {
 		switch volcanoJob.Status.State.Phase {
 		case volcanov1alpha1.Running:
-			if pintaJob.Status.NumReplicas == 0 {
+			if lastPintaJobStatus.NumReplicas == 0 {
 				newState = pintav1.Preempted
 			} else {
 				newState = pintav1.Running
@@ -401,8 +410,14 @@ func (c *Controller) updatePintaJobStatus(pintaJob *pintav1.PintaJob, volcanoJob
 	// You can use DeepCopy() to make a deep copy of original object and modify this copy
 	// Or create a copy manually for better performance
 	pintaJobCopy := pintaJob.DeepCopy()
-	pintaJobCopy.Status.LastTransitionTime = metav1.Now()
-	pintaJobCopy.Status.State = newState
+	pintaJobCopy.Status = append([]pintav1.PintaJobStatus{
+		{
+			State:              newState,
+			LastTransitionTime: metav1.Now(),
+			NumMasters:         lastPintaJobStatus.NumMasters,
+			NumReplicas:        lastPintaJobStatus.NumReplicas,
+		},
+	}, pintaJobCopy.Status...)
 	// If the CustomResourceSubresources feature gate is not enabled,
 	// we must use Update instead of UpdateStatus to update the Status block of the PintaJob resource.
 	// UpdateStatus will not allow changes to the Spec of the resource,
@@ -474,13 +489,17 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 	//	"app":        "pinta-job",
 	//	"controller": pintaJob.Name,
 	//}
+	var lastPintaJobStatus pintav1.PintaJobStatus
+	if len(pintaJob.Status) > 0 {
+		lastPintaJobStatus = pintaJob.Status[0]
+	}
 	var tasks []volcanov1alpha1.TaskSpec
 	switch pintaJob.Spec.Type {
 	case pintav1.PSWorker:
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "ps",
-				Replicas: pintaJob.Status.NumMasters,
+				Replicas: lastPintaJobStatus.NumMasters,
 				Template: corev1.PodTemplateSpec{
 					Spec: pintaJob.Spec.Master.Spec,
 				},
@@ -488,7 +507,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 			},
 			{
 				Name:     "worker",
-				Replicas: pintaJob.Status.NumReplicas,
+				Replicas: lastPintaJobStatus.NumReplicas,
 				Template: corev1.PodTemplateSpec{
 					Spec: pintaJob.Spec.Replica.Spec,
 				},
@@ -504,7 +523,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "master",
-				Replicas: pintaJob.Status.NumMasters,
+				Replicas: lastPintaJobStatus.NumMasters,
 				Template: corev1.PodTemplateSpec{
 					Spec: pintaJob.Spec.Master.Spec,
 				},
@@ -517,7 +536,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 			},
 			{
 				Name:     "replica",
-				Replicas: pintaJob.Status.NumReplicas,
+				Replicas: lastPintaJobStatus.NumReplicas,
 				Template: corev1.PodTemplateSpec{
 					Spec: pintaJob.Spec.Replica.Spec,
 				},
@@ -528,7 +547,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 		tasks = []volcanov1alpha1.TaskSpec{
 			{
 				Name:     "replica",
-				Replicas: pintaJob.Status.NumReplicas,
+				Replicas: lastPintaJobStatus.NumReplicas,
 				Template: corev1.PodTemplateSpec{
 					Spec: pintaJob.Spec.Replica.Spec,
 				},
@@ -572,12 +591,7 @@ func newVCJob(pintaJob *pintav1.PintaJob) *volcanov1alpha1.Job {
 			MinAvailable:  sumReplicas,
 			Volumes:       pintaJob.Spec.Volumes,
 			Tasks:         tasks,
-			Policies: []volcanov1alpha1.LifecyclePolicy{
-				{
-					Event:  "PodEvicted",
-					Action: "RestartJob",
-				},
-			},
+			Policies:      nil,
 			Plugins: map[string][]string{
 				"env": {},
 				"svc": {},

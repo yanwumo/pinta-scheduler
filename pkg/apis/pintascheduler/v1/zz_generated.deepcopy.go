@@ -32,7 +32,13 @@ func (in *PintaJob) DeepCopyInto(out *PintaJob) {
 	out.TypeMeta = in.TypeMeta
 	in.ObjectMeta.DeepCopyInto(&out.ObjectMeta)
 	in.Spec.DeepCopyInto(&out.Spec)
-	in.Status.DeepCopyInto(&out.Status)
+	if in.Status != nil {
+		in, out := &in.Status, &out.Status
+		*out = make([]PintaJobStatus, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

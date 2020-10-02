@@ -20,9 +20,11 @@ func buildPintaJob(name string, timestamp metav1.Time) *pintav1.PintaJob {
 		Spec: pintav1.PintaJobSpec{
 			Type: "type1",
 		},
-		Status: pintav1.PintaJobStatus{
-			NumMasters:  1,
-			NumReplicas: 2,
+		Status: []pintav1.PintaJobStatus{
+			{
+				NumMasters:  1,
+				NumReplicas: 2,
+			},
 		},
 	}
 }
@@ -41,9 +43,11 @@ func buildPintaJobWithCustomFields(name string, timestamp metav1.Time, customFie
 		Spec: pintav1.PintaJobSpec{
 			Type: "type1",
 		},
-		Status: pintav1.PintaJobStatus{
-			NumMasters:  1,
-			NumReplicas: 2,
+		Status: []pintav1.PintaJobStatus{
+			{
+				NumMasters:  1,
+				NumReplicas: 2,
+			},
 		},
 	}
 }
