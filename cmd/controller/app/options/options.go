@@ -39,7 +39,7 @@ type ServerOption struct {
 	PrintVersion         bool
 	// WorkerThreads is the number of threads syncing job operations
 	// concurrently. Larger number = faster job updating, but more CPU load.
-	WorkerThreads int
+	WorkerThreads uint32
 	SchedulerName string
 	// HealthzBindAddress is the IP address and port for the health check server to serve on,
 	// defaulting to 0.0.0.0:11252
@@ -64,7 +64,7 @@ func (s *ServerOption) AddFlags(fs *pflag.FlagSet) {
 	fs.Float32Var(&s.KubeClientOptions.QPS, "kube-api-qps", defaultQPS, "QPS to use while talking with kubernetes apiserver")
 	fs.IntVar(&s.KubeClientOptions.Burst, "kube-api-burst", defaultBurst, "Burst to use while talking with kubernetes apiserver")
 	fs.BoolVar(&s.PrintVersion, "version", false, "Show version and quit")
-	fs.IntVar(&s.WorkerThreads, "worker-threads", defaultWorkers, "The number of threads syncing job operations concurrently. "+
+	fs.Uint32Var(&s.WorkerThreads, "worker-threads", defaultWorkers, "The number of threads syncing job operations concurrently. "+
 		"Larger number = faster job updating, but more CPU load")
 	fs.StringVar(&s.SchedulerName, "scheduler-name", defaultSchedulerName, "Volcano will handle pods whose .spec.SchedulerName is same as scheduler-name")
 }

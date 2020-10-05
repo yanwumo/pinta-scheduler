@@ -2,8 +2,8 @@ package session
 
 import (
 	"context"
+	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"
@@ -16,11 +16,11 @@ const (
 
 type jobUpdater struct {
 	ssn      *Session
-	jobQueue []*api.JobInfo
+	jobQueue []*info.JobInfo
 }
 
 func newJobUpdater(ssn *Session) *jobUpdater {
-	queue := make([]*api.JobInfo, 0, len(ssn.Jobs))
+	queue := make([]*info.JobInfo, 0, len(ssn.Jobs))
 	for _, jobInfo := range ssn.Jobs {
 		queue = append(queue, jobInfo)
 	}

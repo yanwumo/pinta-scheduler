@@ -2,8 +2,8 @@ package hell
 
 import (
 	"bytes"
+	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/session"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -92,8 +92,8 @@ func (hell *Policy) Execute(ssn *session.Session) {
 	}
 
 	// Calculate ratios
-	ratiosMap := make(map[api.JobID][]float64)                // Schedule based on ratios
-	remainingServiceTimesMap := make(map[api.JobID][]float64) // Fill based on remaining service times
+	ratiosMap := make(map[info.JobID][]float64)                // Schedule based on ratios
+	remainingServiceTimesMap := make(map[info.JobID][]float64) // Fill based on remaining service times
 	for id, job := range ssn.Jobs {
 		customFields := job.CustomFields.(*JobCustomFields)
 		throughput := customFields.Throughput
@@ -115,7 +115,7 @@ func (hell *Policy) Execute(ssn *session.Session) {
 	numNodes := len(ssn.Nodes)
 	for numNodes > 0 && len(ratiosMap) > 0 {
 		// Pick the job with minimum ratio
-		var nextJob *api.JobInfo
+		var nextJob *info.JobInfo
 		optimalNumReplicas := 0
 		minRatio := math.MaxFloat64
 		for id, ratios := range ratiosMap {
@@ -167,7 +167,7 @@ func (hell *Policy) Execute(ssn *session.Session) {
 	for numNodes > 0 && len(remainingServiceTimesMap) > 0 {
 		// Pick the job with min # replicas to achieve min remaining service time
 		minAdditionalNumReplicasToAchieveMinRemainingServiceTime := math.MaxInt32
-		var nextJob *api.JobInfo
+		var nextJob *info.JobInfo
 		for id, remainingServiceTimes := range remainingServiceTimesMap {
 			job := ssn.Jobs[id]
 			if job.NumReplicas == 0 {

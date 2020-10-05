@@ -2,8 +2,8 @@ package cache
 
 import (
 	"fmt"
+	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -11,8 +11,8 @@ import (
 	"k8s.io/klog"
 )
 
-func getJobID(job *pintav1.PintaJob) api.JobID {
-	return api.JobID(fmt.Sprintf("%s/%s", job.Namespace, job.Name))
+func getJobID(job *pintav1.PintaJob) info.JobID {
+	return info.JobID(fmt.Sprintf("%s/%s", job.Namespace, job.Name))
 }
 
 // Assumes that lock is already acquired.
@@ -26,7 +26,7 @@ func (sc *PintaCache) addJob(job *pintav1.PintaJob) error {
 	}
 
 	jobID := getJobID(job)
-	ji := api.NewJobInfo(jobID, job)
+	ji := info.NewJobInfo(jobID, job)
 	if sc.Jobs[jobID] != nil {
 		sc.Jobs[jobID] = ji
 	} else {

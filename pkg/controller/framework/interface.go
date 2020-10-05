@@ -30,7 +30,7 @@ type ControllerOption struct {
 	PintaClient           pintaclientset.Interface
 	SharedInformerFactory informers.SharedInformerFactory
 	SchedulerName         string
-	WorkerNum             int
+	WorkerNum             uint32
 }
 
 // Controller is the interface of all controllers.

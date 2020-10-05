@@ -1,4 +1,4 @@
-package api
+package info
 
 import (
 	"fmt"
@@ -218,6 +218,28 @@ func (r *Resource) Multi(ratio float64) *Resource {
 		r.ScalarResources[rName] = rQuant * ratio
 	}
 	return r
+}
+
+// EqualStrict checks whether a resource is equal to the other
+func (r *Resource) EqualStrict(rr *Resource) bool {
+	equalFunc := func(l, r float64) bool {
+		return l == r
+	}
+
+	if !equalFunc(r.MilliCPU, rr.MilliCPU) {
+		return false
+	}
+	if !equalFunc(r.Memory, rr.Memory) {
+		return false
+	}
+
+	for rName, rQuant := range r.ScalarResources {
+		if !equalFunc(rQuant, rr.ScalarResources[rName]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Less checks whether a resource is less than other

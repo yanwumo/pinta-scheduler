@@ -1,4 +1,4 @@
-package api
+package info
 
 type ClusterInfo struct {
 	Jobs  map[JobID]*JobInfo

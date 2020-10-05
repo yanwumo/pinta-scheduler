@@ -17,12 +17,14 @@ limitations under the License.
 package cache
 
 import (
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	v1 "k8s.io/api/core/v1"
 	"reflect"
 
 	"k8s.io/client-go/kubernetes"
 
+	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
 	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
 	vcclient "volcano.sh/volcano/pkg/client/clientset/versioned"
 )
 
@@ -33,7 +35,7 @@ type Cache interface {
 	Run(stopCh <-chan struct{})
 
 	// Snapshot deep copy overall cache information into snapshot
-	Snapshot(jobCustomFieldsType reflect.Type) *api.ClusterInfo
+	Snapshot(jobCustomFieldsType reflect.Type) *info.ClusterInfo
 
 	// WaitForCacheSync waits for all cache synced
 	WaitForCacheSync(stopCh <-chan struct{}) bool
@@ -46,4 +48,10 @@ type Cache interface {
 
 	// PintaClient returns the Pinta clientSet
 	PintaClient() clientset.Interface
+}
+
+type JobInfoUpdater interface {
+	UpdateJobNodeType(nodeType string) error
+	UpdateJobResourceRequirements(rl v1.ResourceList) error
+	UpdateJobStatus(status pintav1.PintaJobStatus) error
 }

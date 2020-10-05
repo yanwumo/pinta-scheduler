@@ -2,7 +2,7 @@ package session
 
 import (
 	"fmt"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
+	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/cache"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/uuid"
@@ -19,9 +19,9 @@ type Session struct {
 	kubeClient kubernetes.Interface
 	cache      cache.Cache
 
-	Jobs      map[api.JobID]*api.JobInfo
-	Nodes     map[string]*api.NodeInfo
-	NodeTypes map[string]*api.NodeTypeInfo
+	Jobs      map[info.JobID]*info.JobInfo
+	Nodes     map[string]*info.NodeInfo
+	NodeTypes map[string]*info.NodeTypeInfo
 }
 
 func OpenSession(config *rest.Config, cache cache.Cache, policy Policy) *Session {
@@ -31,9 +31,9 @@ func OpenSession(config *rest.Config, cache cache.Cache, policy Policy) *Session
 		kubeClient: cache.Client(),
 		cache:      cache,
 
-		Jobs:      map[api.JobID]*api.JobInfo{},
-		Nodes:     map[string]*api.NodeInfo{},
-		NodeTypes: map[string]*api.NodeTypeInfo{},
+		Jobs:      map[info.JobID]*info.JobInfo{},
+		Nodes:     map[string]*info.NodeInfo{},
+		NodeTypes: map[string]*info.NodeTypeInfo{},
 	}
 
 	snapshot := cache.Snapshot(policy.JobCustomFieldsType())
@@ -46,7 +46,7 @@ func OpenSession(config *rest.Config, cache cache.Cache, policy Policy) *Session
 		if found {
 			nodeType.AddNode(node)
 		} else {
-			ssn.NodeTypes[node.Type] = api.NewNodeTypeInfo(node)
+			ssn.NodeTypes[node.Type] = info.NewNodeTypeInfo(node)
 		}
 	}
 

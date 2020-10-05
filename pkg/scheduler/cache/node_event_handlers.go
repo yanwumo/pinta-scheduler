@@ -2,7 +2,7 @@ package cache
 
 import (
 	"fmt"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
+	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
@@ -13,7 +13,7 @@ func (sc *PintaCache) addNode(node *v1.Node) error {
 	if sc.Nodes[node.Name] != nil {
 		sc.Nodes[node.Name].SetNode(node)
 	} else {
-		sc.Nodes[node.Name] = api.NewNodeInfo(node)
+		sc.Nodes[node.Name] = info.NewNodeInfo(node)
 	}
 	return nil
 }

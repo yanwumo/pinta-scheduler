@@ -1,4 +1,4 @@
-package api
+package info
 
 import (
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
