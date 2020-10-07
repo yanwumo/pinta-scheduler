@@ -19,21 +19,26 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
+	"os"
+	"runtime"
+	"time"
+
 	"github.com/qed-usc/pinta-scheduler/cmd/controller/app"
 	"github.com/qed-usc/pinta-scheduler/cmd/controller/app/options"
 	"github.com/spf13/pflag"
 	"k8s.io/apimachinery/pkg/util/wait"
 	cliflag "k8s.io/component-base/cli/flag"
-	"os"
-	"runtime"
-	"time"
 	"volcano.sh/volcano/pkg/version"
 
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"k8s.io/klog"
+
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
 	_ "github.com/qed-usc/pinta-scheduler/pkg/controller"
+	"github.com/qed-usc/pinta-scheduler/pkg/metrics"
 )
 
 var logFlushFreq = pflag.Duration("log-flush-frequency", 5*time.Second, "Maximum number of seconds between log flushes")
@@ -62,6 +67,18 @@ func main() {
 	// The default klog flush interval is 30 seconds, which is frighteningly long.
 	go wait.Until(klog.Flush, *logFlushFreq, wait.NeverStop)
 	defer klog.Flush()
+
+	// start serving prometheus on 8080
+	metricsMux := http.NewServeMux()
+	metricsMux.Handle("/metrics", promhttp.Handler())
+	metrics.RegisterPintaJob()
+	go func() {
+		klog.Info("Listening and serving metrics at port 8080...")
+		err := http.ListenAndServe(":8080", metricsMux)
+		if err != nil {
+			klog.Errorf("Metrics (http) serving failed: %v", err)
+		}
+	}()
 
 	if err := app.Run(s); err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "%v\n", err)
