@@ -11,6 +11,7 @@ import (
 	informers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions"
 	pintajobinformers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pintascheduler/v1"
 	listers "github.com/qed-usc/pinta-scheduler/pkg/generated/listers/pintascheduler/v1"
+	"github.com/qed-usc/pinta-scheduler/pkg/metrics"
 	"hash"
 	"hash/fnv"
 	v1 "k8s.io/api/core/v1"
@@ -61,10 +62,11 @@ type PintaJobController struct {
 	pintaJobLister listers.PintaJobLister
 	pintaJobSynced func() bool
 
-	queueList []workqueue.RateLimitingInterface
-	cache     controllercache.Cache
-	recorder  record.EventRecorder
-	workers   uint32
+	queueList       []workqueue.RateLimitingInterface
+	cache           controllercache.Cache
+	recorder        record.EventRecorder
+	metricsRecorder *metrics.Recorder
+	workers         uint32
 }
 
 func (c *PintaJobController) Name() string {
@@ -88,6 +90,7 @@ func (c *PintaJobController) Initialize(opt *framework.ControllerOption) error {
 	c.queueList = make([]workqueue.RateLimitingInterface, workers)
 	c.cache = controllercache.New()
 	c.recorder = recorder
+	c.metricsRecorder = metrics.NewRecorder()
 	c.workers = workers
 
 	var i uint32
