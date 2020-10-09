@@ -214,7 +214,7 @@ func (c *PintaJobController) processNextReq(count uint32) bool {
 		return true
 	}
 
-	vcJobUpdater := updater.NewVCJobUpdater(c.cache, c.vcClient, c.pintaClient, jobInfo)
+	vcJobUpdater := updater.NewUpdater(c.cache, c.vcClient, c.pintaClient, jobInfo)
 
 	st := state.NewState(vcJobUpdater)
 	if st == nil {

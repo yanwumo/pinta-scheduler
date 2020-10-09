@@ -22,7 +22,7 @@ type Updater struct {
 	jobInfo *api.JobInfo
 }
 
-func NewVCJobUpdater(
+func NewUpdater(
 	cache controllercache.Cache,
 	vcClient vcclientset.Interface,
 	pintaClient pintaclientset.Interface,
