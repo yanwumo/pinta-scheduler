@@ -22,10 +22,10 @@ import (
 	"context"
 	time "time"
 
-	pintaschedulerv1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	versioned "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/internalinterfaces"
-	v1 "github.com/qed-usc/pinta-scheduler/pkg/generated/listers/pintascheduler/v1"
+	v1 "github.com/qed-usc/pinta-scheduler/pkg/generated/listers/pinta/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -71,7 +71,7 @@ func NewFilteredPintaJobInformer(client versioned.Interface, namespace string, r
 				return client.PintaV1().PintaJobs(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&pintaschedulerv1.PintaJob{},
+		&pintav1.PintaJob{},
 		resyncPeriod,
 		indexers,
 	)
@@ -82,7 +82,7 @@ func (f *pintaJobInformer) defaultInformer(client versioned.Interface, resyncPer
 }
 
 func (f *pintaJobInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&pintaschedulerv1.PintaJob{}, f.defaultInformer)
+	return f.factory.InformerFor(&pintav1.PintaJob{}, f.defaultInformer)
 }
 
 func (f *pintaJobInformer) Lister() v1.PintaJobLister {

@@ -2,7 +2,7 @@ package _type
 
 import (
 	"fmt"
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"

@@ -8,7 +8,7 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 
-	v1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	v1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 )
 
 type Recorder struct {

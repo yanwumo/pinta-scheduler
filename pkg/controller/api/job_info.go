@@ -1,7 +1,7 @@
 package api
 
 import (
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 )
 

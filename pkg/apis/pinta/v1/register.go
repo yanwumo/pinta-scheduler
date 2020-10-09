@@ -21,11 +21,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler"
+	"github.com/qed-usc/pinta-scheduler/pkg/apis/pinta"
 )
 
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = schema.GroupVersion{Group: pintascheduler.GroupName, Version: "v1"}
+var SchemeGroupVersion = schema.GroupVersion{Group: pinta.GroupName, Version: "v1"}
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind
 func Kind(kind string) schema.GroupKind {

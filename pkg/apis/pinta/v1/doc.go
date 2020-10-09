@@ -18,4 +18,4 @@ limitations under the License.
 // +groupName=pinta.qed.usc.edu
 
 // Package v1 is the v1 version of the API.
-package v1 // import "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+package v1 // import "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"

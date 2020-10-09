@@ -19,7 +19,7 @@ limitations under the License.
 package v1
 
 import (
-	v1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	v1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	"github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )

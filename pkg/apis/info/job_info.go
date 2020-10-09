@@ -1,7 +1,7 @@
 package info
 
 import (
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	"gopkg.in/yaml.v2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"

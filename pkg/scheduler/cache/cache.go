@@ -17,7 +17,7 @@ import (
 	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
 	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	pintainformers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions"
-	ptjobinformers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pintascheduler/v1"
+	ptjobinformers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pinta/v1"
 	kubeinformers "k8s.io/client-go/informers/core/v1"
 	volcanoclientset "volcano.sh/volcano/pkg/client/clientset/versioned"
 	volcanoinformers "volcano.sh/volcano/pkg/client/informers/externalversions"

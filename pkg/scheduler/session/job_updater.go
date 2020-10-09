@@ -3,7 +3,7 @@ package session
 import (
 	"context"
 	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/util/workqueue"

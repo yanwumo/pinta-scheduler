@@ -19,7 +19,7 @@ limitations under the License.
 package fake
 
 import (
-	v1 "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/typed/pintascheduler/v1"
+	v1 "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/typed/pinta/v1"
 	rest "k8s.io/client-go/rest"
 	testing "k8s.io/client-go/testing"
 )

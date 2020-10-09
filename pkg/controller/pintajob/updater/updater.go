@@ -2,7 +2,7 @@ package updater
 
 import (
 	"context"
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	"github.com/qed-usc/pinta-scheduler/pkg/controller/api"
 	controllercache "github.com/qed-usc/pinta-scheduler/pkg/controller/cache"
 	pintajobtype "github.com/qed-usc/pinta-scheduler/pkg/controller/pintajob/type"

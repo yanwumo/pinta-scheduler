@@ -3,7 +3,7 @@ package pintajob
 import (
 	"fmt"
 	"github.com/qed-usc/pinta-scheduler/pkg/apis/helpers"
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	"github.com/qed-usc/pinta-scheduler/pkg/controller/api"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"

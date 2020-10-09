@@ -3,7 +3,7 @@ package hell
 import (
 	"bytes"
 	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/session"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/kubernetes/scheme"

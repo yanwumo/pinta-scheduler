@@ -17,7 +17,7 @@ limitations under the License.
 package cache
 
 import (
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	v1 "k8s.io/api/core/v1"
 	"reflect"
 
