@@ -1,10 +1,11 @@
-package ptjob
+package pintajob
 
 import (
 	"github.com/qed-usc/pinta-scheduler/pkg/controller/api"
 	controllercache "github.com/qed-usc/pinta-scheduler/pkg/controller/cache"
 	"github.com/qed-usc/pinta-scheduler/pkg/controller/framework"
-	"github.com/qed-usc/pinta-scheduler/pkg/controller/ptjob/state"
+	"github.com/qed-usc/pinta-scheduler/pkg/controller/pintajob/state"
+	"github.com/qed-usc/pinta-scheduler/pkg/controller/pintajob/updater"
 	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	pintascheme "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/scheme"
 	informers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions"
@@ -104,6 +105,11 @@ func (c *PintaJobController) Initialize(opt *framework.ControllerOption) error {
 	c.nodeSynced = c.nodeInformer.Informer().HasSynced
 
 	c.vcJobInformer = volcanoinformers.NewSharedInformerFactory(c.vcClient, 0).Batch().V1alpha1().Jobs()
+	c.vcJobInformer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
+		AddFunc:    c.addVCJob,
+		UpdateFunc: c.updateVCJob,
+		DeleteFunc: c.deleteVCJob,
+	})
 	c.vcJobLister = c.vcJobInformer.Lister()
 	c.vcJobSynced = c.vcJobInformer.Informer().HasSynced
 
@@ -205,28 +211,26 @@ func (c *PintaJobController) processNextReq(count uint32) bool {
 		return true
 	}
 
-	st := state.NewState(jobInfo)
+	vcJobUpdater := updater.NewVCJobUpdater(c.cache, c.vcClient, c.pintaClient, jobInfo)
+
+	st := state.NewState(vcJobUpdater)
 	if st == nil {
 		klog.Errorf("Invalid state of Job <%v/%v>", jobInfo.Job.Namespace, jobInfo.Job.Name)
 		return true
 	}
 
-	//if err := st.Execute(); err != nil {
-	//	if queue.NumRequeues(req) < maxRetries {
-	//		klog.V(2).Infof("Failed to handle Job <%s/%s>: %v",
-	//			jobInfo.Job.Namespace, jobInfo.Job.Name, err)
-	//		// If any error, requeue it.
-	//		queue.AddRateLimited(req)
-	//		return true
-	//	}
-	//	//c.recordJobEvent(jobInfo.Job.Namespace, jobInfo.Job.Name, batchv1alpha1.ExecuteAction, fmt.Sprintf(
-	//	//	"Job failed on action %s for retry limit reached", action))
-	//	klog.Warningf("Dropping job <%s/%s> out of the queue: %v because max retries has reached", jobInfo.Job.Namespace, jobInfo.Job.Name, err)
-	//}
-	err = c.legacyProcessPintaJob(jobInfo.Job)
-	if err != nil {
-		klog.Errorf("Failed to process job by <%v> from cache: %v", jobInfo, err)
-		return true
+	klog.V(4).Infof("Job <%v/%v> executes in <%v> state", jobInfo.Job.Namespace, jobInfo.Job.Name, st.Name())
+	if err := st.Execute(); err != nil {
+		if queue.NumRequeues(req) < maxRetries {
+			klog.V(2).Infof("Failed to handle Job <%s/%s>: %v",
+				jobInfo.Job.Namespace, jobInfo.Job.Name, err)
+			// If any error, requeue it.
+			queue.AddRateLimited(req)
+			return true
+		}
+		//c.recordJobEvent(jobInfo.Job.Namespace, jobInfo.Job.Name, batchv1alpha1.ExecuteAction, fmt.Sprintf(
+		//	"Job failed on action %s for retry limit reached", action))
+		klog.Warningf("Dropping job <%s/%s> out of the queue: %v because max retries has reached", jobInfo.Job.Namespace, jobInfo.Job.Name, err)
 	}
 
 	// If no error, forget it.

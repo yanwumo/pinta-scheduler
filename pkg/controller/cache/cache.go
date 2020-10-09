@@ -7,6 +7,7 @@ import (
 	"github.com/qed-usc/pinta-scheduler/pkg/controller/api"
 	"sync"
 	"time"
+	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 
 	"golang.org/x/time/rate"
 
@@ -40,6 +41,10 @@ func JobKeyByReq(req *api.Request) string {
 
 func JobKey(job *pintav1.PintaJob) string {
 	return keyFn(job.Namespace, job.Name)
+}
+
+func VCJobKey(vcjob *volcanov1alpha1.Job) string {
+	return keyFn(vcjob.Namespace, vcjob.Name)
 }
 
 func jobTerminated(job *api.JobInfo) bool {
@@ -134,6 +139,46 @@ func (jc *jobCache) Delete(obj *pintav1.PintaJob) error {
 	}
 	jobInfo.Job = nil
 	jc.deleteJob(jobInfo)
+
+	return nil
+}
+
+func (jc *jobCache) addOrUpdateVCJob(vcjob *volcanov1alpha1.Job) error {
+	key := VCJobKey(vcjob)
+	job, found := jc.jobs[key]
+	if !found {
+		job = &api.JobInfo{
+			VCJob: vcjob,
+		}
+		jc.jobs[key] = job
+	}
+
+	return job.SetVCJob(vcjob)
+}
+
+func (jc *jobCache) AddVCJob(vcjob *volcanov1alpha1.Job) error {
+	jc.Lock()
+	defer jc.Unlock()
+
+	return jc.addOrUpdateVCJob(vcjob)
+}
+
+func (jc *jobCache) UpdateVCJob(vcjob *volcanov1alpha1.Job) error {
+	jc.Lock()
+	defer jc.Unlock()
+
+	return jc.addOrUpdateVCJob(vcjob)
+}
+
+func (jc *jobCache) DeleteVCJob(vcjob *volcanov1alpha1.Job) error {
+	jc.Lock()
+	defer jc.Unlock()
+
+	key := VCJobKey(vcjob)
+	job, found := jc.jobs[key]
+	if found {
+		job.VCJob = nil
+	}
 
 	return nil
 }

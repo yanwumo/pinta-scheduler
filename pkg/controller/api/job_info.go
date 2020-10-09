@@ -2,14 +2,15 @@ package api
 
 import (
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 )
 
 type JobInfo struct {
 	Namespace string
 	Name      string
 
-	Job *pintav1.PintaJob
-	//Pods map[string]map[string]*v1.Pod
+	Job   *pintav1.PintaJob
+	VCJob *volcanov1alpha1.Job
 }
 
 func NewJobInfo(job *pintav1.PintaJob) *JobInfo {
@@ -25,17 +26,10 @@ func (ji *JobInfo) Clone() *JobInfo {
 	job := &JobInfo{
 		Namespace: ji.Namespace,
 		Name:      ji.Name,
-		Job:       ji.Job,
 
-		//Pods: make(map[string]map[string]*v1.Pod),
+		Job:   ji.Job,
+		VCJob: ji.VCJob,
 	}
-
-	//for key, pods := range ji.Pods {
-	//	job.Pods[key] = make(map[string]*v1.Pod)
-	//	for pn, pod := range pods {
-	//		job.Pods[key][pn] = pod
-	//	}
-	//}
 
 	return job
 }
@@ -44,4 +38,9 @@ func (ji *JobInfo) SetJob(job *pintav1.PintaJob) {
 	ji.Name = job.Name
 	ji.Namespace = job.Namespace
 	ji.Job = job
+}
+
+func (ji *JobInfo) SetVCJob(vcjob *volcanov1alpha1.Job) error {
+	ji.VCJob = vcjob
+	return nil
 }

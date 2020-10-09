@@ -37,7 +37,7 @@ import (
 	// Uncomment the following line to load the gcp plugin (only required to authenticate against GKE clusters).
 	// _ "k8s.io/client-go/plugin/pkg/client/auth/gcp"
 
-	_ "github.com/qed-usc/pinta-scheduler/pkg/controller/ptjob"
+	_ "github.com/qed-usc/pinta-scheduler/pkg/controller/pintajob"
 	"github.com/qed-usc/pinta-scheduler/pkg/metrics"
 )
 
