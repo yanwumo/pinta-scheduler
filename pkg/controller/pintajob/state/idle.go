@@ -3,6 +3,7 @@ package state
 import (
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	"github.com/qed-usc/pinta-scheduler/pkg/controller/pintajob/updater"
+	"k8s.io/klog"
 )
 
 type idleState struct {
@@ -18,11 +19,6 @@ func (is *idleState) Execute() error {
 	// If not, stay at idle state
 	pintaJobStatus := is.updater.GetLastPintaJobStatus()
 	if pintaJobStatus.NumMasters == 0 && pintaJobStatus.NumReplicas == 0 {
-		// Initialize PintaJob status if not exist
-		if pintaJobStatus.State == "" {
-			return is.updater.UpdatePintaJobStatusState(pintav1.Idle)
-		}
-
 		return nil
 	}
 

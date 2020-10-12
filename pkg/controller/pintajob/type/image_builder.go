@@ -3,16 +3,30 @@ package _type
 import (
 	"fmt"
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
+	controllercache "github.com/qed-usc/pinta-scheduler/pkg/controller/cache"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 )
 
 type imageBuilder struct {
-	job *pintav1.PintaJob
+	cache controllercache.Cache
+	job   *pintav1.PintaJob
 }
 
-func (ib *imageBuilder) BuildVCJob() *volcanov1alpha1.Job {
+func (ib *imageBuilder) BuildVCJob() (*volcanov1alpha1.Job, error) {
+	replicaSpec := volcanov1alpha1.TaskSpec{
+		Name:     "image-builder",
+		Replicas: 1,
+		Template: corev1.PodTemplateSpec{
+			Spec: *ib.job.Spec.Replica.Spec.DeepCopy(), // we are patching this below
+		},
+	}
+	err := patchPodSpecWithRoleSpec(&replicaSpec.Template.Spec, &ib.job.Spec.Replica, ib.cache.TranslateResources)
+	if err != nil {
+		return nil, err
+	}
+
 	return &volcanov1alpha1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      ib.job.Name,
@@ -25,17 +39,9 @@ func (ib *imageBuilder) BuildVCJob() *volcanov1alpha1.Job {
 			SchedulerName: "volcano",
 			MinAvailable:  1,
 			Volumes:       ib.job.Spec.Volumes,
-			Tasks: []volcanov1alpha1.TaskSpec{
-				{
-					Name:     "image-builder",
-					Replicas: 1,
-					Template: corev1.PodTemplateSpec{
-						Spec: ib.job.Spec.Replica.Spec,
-					},
-				},
-			},
+			Tasks:         []volcanov1alpha1.TaskSpec{replicaSpec},
 		},
-	}
+	}, nil
 }
 
 func (ib *imageBuilder) ReconcileVCJob(vcJob *volcanov1alpha1.Job) (bool, error) {

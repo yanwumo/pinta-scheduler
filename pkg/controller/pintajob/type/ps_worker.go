@@ -3,19 +3,52 @@ package _type
 import (
 	"fmt"
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
+	controllercache "github.com/qed-usc/pinta-scheduler/pkg/controller/cache"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 )
 
 type psWorker struct {
-	job *pintav1.PintaJob
+	cache controllercache.Cache
+	job   *pintav1.PintaJob
 }
 
-func (pw *psWorker) BuildVCJob() *volcanov1alpha1.Job {
+func (pw *psWorker) BuildVCJob() (*volcanov1alpha1.Job, error) {
 	var lastPintaJobStatus pintav1.PintaJobStatus
 	if len(pw.job.Status) > 0 {
 		lastPintaJobStatus = pw.job.Status[0]
+	}
+
+	masterSpec := volcanov1alpha1.TaskSpec{
+		Name:     "ps",
+		Replicas: lastPintaJobStatus.NumMasters,
+		Template: corev1.PodTemplateSpec{
+			Spec: *pw.job.Spec.Master.Spec.DeepCopy(), // we are patching this below
+		},
+		Policies: nil,
+	}
+	err := patchPodSpecWithRoleSpec(&masterSpec.Template.Spec, &pw.job.Spec.Master, pw.cache.TranslateResources)
+	if err != nil {
+		return nil, err
+	}
+
+	replicaSpec := volcanov1alpha1.TaskSpec{
+		Name:     "worker",
+		Replicas: lastPintaJobStatus.NumReplicas,
+		Template: corev1.PodTemplateSpec{
+			Spec: *pw.job.Spec.Replica.Spec.DeepCopy(), // we are patching this below
+		},
+		Policies: []volcanov1alpha1.LifecyclePolicy{
+			{
+				Event:  "TaskCompleted",
+				Action: "CompleteJob",
+			},
+		},
+	}
+	err = patchPodSpecWithRoleSpec(&replicaSpec.Template.Spec, &pw.job.Spec.Replica, pw.cache.TranslateResources)
+	if err != nil {
+		return nil, err
 	}
 
 	return &volcanov1alpha1.Job{
@@ -30,35 +63,13 @@ func (pw *psWorker) BuildVCJob() *volcanov1alpha1.Job {
 			SchedulerName: "volcano",
 			MinAvailable:  lastPintaJobStatus.NumMasters + lastPintaJobStatus.NumReplicas,
 			Volumes:       pw.job.Spec.Volumes,
-			Tasks: []volcanov1alpha1.TaskSpec{
-				{
-					Name:     "ps",
-					Replicas: lastPintaJobStatus.NumMasters,
-					Template: corev1.PodTemplateSpec{
-						Spec: pw.job.Spec.Master.Spec,
-					},
-					Policies: nil,
-				},
-				{
-					Name:     "worker",
-					Replicas: lastPintaJobStatus.NumReplicas,
-					Template: corev1.PodTemplateSpec{
-						Spec: pw.job.Spec.Replica.Spec,
-					},
-					Policies: []volcanov1alpha1.LifecyclePolicy{
-						{
-							Event:  "TaskCompleted",
-							Action: "CompleteJob",
-						},
-					},
-				},
-			},
+			Tasks:         []volcanov1alpha1.TaskSpec{masterSpec, replicaSpec},
 			Plugins: map[string][]string{
 				"env": {},
 				"svc": {},
 			},
 		},
-	}
+	}, nil
 }
 
 func (pw *psWorker) ReconcileVCJob(vcJob *volcanov1alpha1.Job) (bool, error) {

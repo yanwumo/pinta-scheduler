@@ -78,6 +78,7 @@ func (u *Updater) UpdatePintaJobStatusState(state pintav1.PintaJobState) error {
 	return u.cache.Update(newPintaJob)
 }
 
+// Reconcile creates/updates Volcano Job spec according to PintaJob spec
 func (u *Updater) Reconcile() error {
 	pintaJob := u.jobInfo.Job
 	vcJob := u.jobInfo.VCJob
@@ -89,11 +90,15 @@ func (u *Updater) Reconcile() error {
 	}
 
 	// PintaJob -> Volcano Job
-	pintaJobType := pintajobtype.NewType(pintaJob)
+	pintaJobType := pintajobtype.NewType(u.cache, pintaJob)
 	var newVCJob *volcanov1alpha1.Job
 	var err error
 	if vcJob == nil {
-		newVCJob = pintaJobType.BuildVCJob()
+		newVCJob, err = pintaJobType.BuildVCJob()
+		if err != nil {
+			klog.Errorf("Building Volcano Job <%v/%v> failed: %v", u.jobInfo.Namespace, u.jobInfo.Namespace, err)
+			return err
+		}
 		newVCJob, err = u.vcClient.BatchV1alpha1().Jobs(u.jobInfo.Namespace).Create(context.TODO(), newVCJob, metav1.CreateOptions{})
 		if err != nil {
 			klog.Errorf("PintaJob -> Volcano Job <%v/%v> creation failed: %v", u.jobInfo.Namespace, u.jobInfo.Namespace, err)

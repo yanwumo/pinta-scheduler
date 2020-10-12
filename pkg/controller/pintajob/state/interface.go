@@ -29,6 +29,5 @@ func NewState(updater *updater.Updater) State {
 		return &finishedState{updater: updater}
 	}
 
-	// Idle state by default
-	return &idleState{updater: updater}
+	return &emptyState{updater: updater}
 }

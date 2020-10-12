@@ -3,19 +3,39 @@ package _type
 import (
 	"fmt"
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
+	controllercache "github.com/qed-usc/pinta-scheduler/pkg/controller/cache"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 )
 
 type symmetric struct {
-	job *pintav1.PintaJob
+	cache controllercache.Cache
+	job   *pintav1.PintaJob
 }
 
-func (s *symmetric) BuildVCJob() *volcanov1alpha1.Job {
+func (s *symmetric) BuildVCJob() (*volcanov1alpha1.Job, error) {
 	var lastPintaJobStatus pintav1.PintaJobStatus
 	if len(s.job.Status) > 0 {
 		lastPintaJobStatus = s.job.Status[0]
+	}
+
+	replicaSpec := volcanov1alpha1.TaskSpec{
+		Name:     "replica",
+		Replicas: lastPintaJobStatus.NumReplicas,
+		Template: corev1.PodTemplateSpec{
+			Spec: *s.job.Spec.Replica.Spec.DeepCopy(), // we are patching this below
+		},
+		Policies: []volcanov1alpha1.LifecyclePolicy{
+			{
+				Event:  "TaskCompleted",
+				Action: "CompleteJob",
+			},
+		},
+	}
+	err := patchPodSpecWithRoleSpec(&replicaSpec.Template.Spec, &s.job.Spec.Replica, s.cache.TranslateResources)
+	if err != nil {
+		return nil, err
 	}
 
 	return &volcanov1alpha1.Job{
@@ -30,27 +50,13 @@ func (s *symmetric) BuildVCJob() *volcanov1alpha1.Job {
 			SchedulerName: "volcano",
 			MinAvailable:  lastPintaJobStatus.NumReplicas,
 			Volumes:       s.job.Spec.Volumes,
-			Tasks: []volcanov1alpha1.TaskSpec{
-				{
-					Name:     "replica",
-					Replicas: lastPintaJobStatus.NumReplicas,
-					Template: corev1.PodTemplateSpec{
-						Spec: s.job.Spec.Replica.Spec,
-					},
-					Policies: []volcanov1alpha1.LifecyclePolicy{
-						{
-							Event:  "TaskCompleted",
-							Action: "CompleteJob",
-						},
-					},
-				},
-			},
+			Tasks:         []volcanov1alpha1.TaskSpec{replicaSpec},
 			Plugins: map[string][]string{
 				"env": {},
 				"svc": {},
 			},
 		},
-	}
+	}, nil
 }
 
 func (s *symmetric) ReconcileVCJob(vcJob *volcanov1alpha1.Job) (bool, error) {

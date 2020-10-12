@@ -21,7 +21,7 @@ func (sc *PintaCache) addJob(job *pintav1.PintaJob) error {
 	if len(job.Status) > 0 {
 		lastPintaJobStatus = job.Status[0]
 	}
-	if lastPintaJobStatus.State == pintav1.Completed {
+	if lastPintaJobStatus.State == "" || lastPintaJobStatus.State == pintav1.Completed {
 		return nil
 	}
 

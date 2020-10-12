@@ -10,7 +10,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/klog"
-	"reflect"
 	volcanov1alpha1 "volcano.sh/volcano/pkg/apis/batch/v1alpha1"
 )
 
@@ -76,10 +75,10 @@ func (c *PintaJobController) updateJob(oldObj, newObj interface{}) {
 
 	// NOTE: Since we only reconcile job based on Spec, we will ignore other attributes
 	// For Job status, it's used internally and always been updated via our controller.
-	if reflect.DeepEqual(newJob.Spec, oldJob.Spec) && len(newJob.Status) != 0 && len(oldJob.Status) != 0 && newJob.Status[0].State == oldJob.Status[0].State {
-		klog.V(6).Infof("Job update event is ignored since no update in 'Spec'.")
-		return
-	}
+	//if reflect.DeepEqual(newJob.Spec, oldJob.Spec) && len(newJob.Status) != 0 && len(oldJob.Status) != 0 && newJob.Status[0].State == oldJob.Status[0].State {
+	//	klog.V(6).Infof("Job update event is ignored since no update in 'Spec'.")
+	//	return
+	//}
 
 	req := api.Request{
 		Namespace: newJob.Namespace,

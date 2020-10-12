@@ -24,4 +24,5 @@ type Cache interface {
 	AddNode(node *v1.Node)
 	UpdateNode(node *v1.Node)
 	DeleteNode(node *v1.Node)
+	TranslateResources(rl v1.ResourceList, nodeType string) (v1.ResourceList, error)
 }
