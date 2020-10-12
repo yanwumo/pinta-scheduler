@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/qed-usc/pinta-scheduler/cmd/simulator/options"
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	simulationapi "github.com/qed-usc/pinta-scheduler/pkg/apis/simulation"
 	pintaclientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	"io/ioutil"

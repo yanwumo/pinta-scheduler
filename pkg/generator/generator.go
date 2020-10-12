@@ -2,7 +2,7 @@ package generator
 
 import (
 	"github.com/qed-usc/pinta-scheduler/cmd/generator/options"
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	simulationapi "github.com/qed-usc/pinta-scheduler/pkg/apis/simulation"
 	"io/ioutil"
 	v1 "k8s.io/api/core/v1"

@@ -20,8 +20,8 @@ package fake
 
 import (
 	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/typed/pintascheduler/v1"
-	fakepintav1 "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/typed/pintascheduler/v1/fake"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/typed/pinta/v1"
+	fakepintav1 "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/typed/pinta/v1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"

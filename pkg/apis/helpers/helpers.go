@@ -3,6 +3,7 @@ package helpers
 import (
 	"context"
 	"fmt"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apiserver/pkg/server/healthz"
 	"k8s.io/apiserver/pkg/server/mux"
@@ -14,6 +15,8 @@ import (
 	"syscall"
 	"time"
 )
+
+var PintaJobKind = pintav1.SchemeGroupVersion.WithKind("PintaJob")
 
 // StartHealthz register healthz interface.
 func StartHealthz(healthzBindAddress, name string) error {

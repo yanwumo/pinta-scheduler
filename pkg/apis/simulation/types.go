@@ -1,6 +1,6 @@
 package api
 
-import v1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pintascheduler/v1"
+import v1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 
 type GeneratorSpec struct {
 	Templates []Template `json:"templates,omitempty"`

@@ -2,18 +2,22 @@ package cache
 
 import (
 	"fmt"
+	"github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/scheme"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
+	corev1 "k8s.io/client-go/kubernetes/typed/core/v1"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/record"
 	"k8s.io/klog"
 	"reflect"
 	"sync"
 
+	"github.com/qed-usc/pinta-scheduler/pkg/apis/info"
 	clientset "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	pintainformers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions"
-	ptjobinformers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pintascheduler/v1"
-	"github.com/qed-usc/pinta-scheduler/pkg/scheduler/api"
+	ptjobinformers "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pinta/v1"
 	kubeinformers "k8s.io/client-go/informers/core/v1"
 	volcanoclientset "volcano.sh/volcano/pkg/client/clientset/versioned"
 	volcanoinformers "volcano.sh/volcano/pkg/client/informers/externalversions"
@@ -31,8 +35,12 @@ type PintaCache struct {
 	vcInformer    vcjobinformers.JobInformer
 	pintaInformer ptjobinformers.PintaJobInformer
 
-	Jobs  map[api.JobID]*api.JobInfo
-	Nodes map[string]*api.NodeInfo
+	JobInfoUpdater JobInfoUpdater
+
+	Recorder record.EventRecorder
+
+	Jobs  map[info.JobID]*info.JobInfo
+	Nodes map[string]*info.NodeInfo
 }
 
 func New(config *rest.Config) Cache {
@@ -52,12 +60,25 @@ func newPintaCache(config *rest.Config) Cache {
 	if err != nil {
 		panic(fmt.Sprintf("Pinta clientset initialization failed: %v", err))
 	}
+	eventClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		panic(fmt.Sprintf("failed init eventClient, with err: %v", err))
+	}
 
 	sc := &PintaCache{
-		Jobs:        make(map[api.JobID]*api.JobInfo),
-		Nodes:       make(map[string]*api.NodeInfo),
+		Jobs:        make(map[info.JobID]*info.JobInfo),
+		Nodes:       make(map[string]*info.NodeInfo),
 		kubeClient:  kubeClient,
 		vcClient:    vcClient,
+		pintaClient: client,
+	}
+
+	// Prepare event clients.
+	broadcaster := record.NewBroadcaster()
+	broadcaster.StartRecordingToSink(&corev1.EventSinkImpl{Interface: eventClient.CoreV1().Events("")})
+	sc.Recorder = broadcaster.NewRecorder(scheme.Scheme, v1.EventSource{Component: "pinta-scheduler"})
+
+	sc.JobInfoUpdater = &defaultJobInfoUpdater{
 		pintaClient: client,
 	}
 
@@ -111,11 +132,11 @@ func (sc *PintaCache) WaitForCacheSync(stopCh <-chan struct{}) bool {
 	)
 }
 
-func (sc *PintaCache) Snapshot(jobCustomFieldsType reflect.Type) *api.ClusterInfo {
+func (sc *PintaCache) Snapshot(jobCustomFieldsType reflect.Type) *info.ClusterInfo {
 	sc.Mutex.Lock()
 	defer sc.Mutex.Unlock()
 
-	snapshot := api.NewClusterInfo()
+	snapshot := info.NewClusterInfo()
 
 	for _, value := range sc.Nodes {
 		if !value.Ready() {
@@ -133,7 +154,7 @@ func (sc *PintaCache) Snapshot(jobCustomFieldsType reflect.Type) *api.ClusterInf
 	var cloneJobLock sync.Mutex
 	var wg sync.WaitGroup
 
-	cloneJob := func(value *api.JobInfo) {
+	cloneJob := func(value *info.JobInfo) {
 		defer wg.Done()
 
 		clonedJob := value.Clone()

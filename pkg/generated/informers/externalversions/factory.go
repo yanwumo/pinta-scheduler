@@ -25,7 +25,7 @@ import (
 
 	versioned "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/internalinterfaces"
-	pintascheduler "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pintascheduler"
+	pinta "github.com/qed-usc/pinta-scheduler/pkg/generated/informers/externalversions/pinta"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -172,9 +172,9 @@ type SharedInformerFactory interface {
 	ForResource(resource schema.GroupVersionResource) (GenericInformer, error)
 	WaitForCacheSync(stopCh <-chan struct{}) map[reflect.Type]bool
 
-	Pinta() pintascheduler.Interface
+	Pinta() pinta.Interface
 }
 
-func (f *sharedInformerFactory) Pinta() pintascheduler.Interface {
-	return pintascheduler.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Pinta() pinta.Interface {
+	return pinta.New(f, f.namespace, f.tweakListOptions)
 }

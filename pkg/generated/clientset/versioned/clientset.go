@@ -21,7 +21,7 @@ package versioned
 import (
 	"fmt"
 
-	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/typed/pintascheduler/v1"
+	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/generated/clientset/versioned/typed/pinta/v1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
