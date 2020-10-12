@@ -3,7 +3,6 @@ package state
 import (
 	pintav1 "github.com/qed-usc/pinta-scheduler/pkg/apis/pinta/v1"
 	"github.com/qed-usc/pinta-scheduler/pkg/controller/pintajob/updater"
-	"k8s.io/klog"
 )
 
 type idleState struct {
