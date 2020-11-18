@@ -1,0 +1,7 @@
+apiVersion: v2
+name: pinta
+version: 0.0.1
+dependencies:
+  - name: nfs-server-provisioner
+    version: "*"
+    repository: https://kubernetes-charts.storage.googleapis.com

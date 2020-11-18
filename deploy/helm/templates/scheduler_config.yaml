@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ template "pinta.fullname" . }}-scheduler-configmap
+data:
+  pinta-scheduler.conf: |
+    policy: nop

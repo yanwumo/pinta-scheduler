@@ -1,0 +1,91 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ template "pinta.fullname" . }}-scheduler-serviceaccount
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ template "pinta.fullname" . }}-scheduler-clusterrole
+rules:
+  - apiGroups: [ "apiextensions.k8s.io" ]
+    resources: [ "customresourcedefinitions" ]
+    verbs: [ "create", "get", "list", "watch", "delete" ]
+  - apiGroups: [ "pinta.qed.usc.edu" ]
+    resources: [ "pintajobs" ]
+    verbs: [ "get", "list", "watch", "update", "delete" ]
+  - apiGroups: [ "pinta.qed.usc.edu" ]
+    resources: [ "pintajobs/status" ]
+    verbs: [ "update", "patch" ]
+  - apiGroups: [ "" ]
+    resources: [ "events" ]
+    verbs: [ "create", "list", "watch", "update", "patch" ]
+  - apiGroups: [ "batch.volcano.sh" ]
+    resources: [ "jobs", "jobs/status" ]
+    verbs: [ "create", "get", "list", "watch", "update", "patch", "delete" ]
+  - apiGroups: [ "" ]
+    resources: [ "namespaces" ]
+    verbs: [ "list", "watch" ]
+  - apiGroups: [ "" ]
+    resources: [ "resourcequotas" ]
+    verbs: [ "list", "watch" ]
+  - apiGroups: [ "" ]
+    resources: [ "nodes" ]
+    verbs: [ "get", "list", "watch" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ template "pinta.fullname" . }}-scheduler-clusterrolebinding
+subjects:
+  - kind: ServiceAccount
+    name: {{ template "pinta.fullname" . }}-scheduler-serviceaccount
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: ClusterRole
+  name: {{ template "pinta.fullname" . }}-scheduler-clusterrole
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "pinta.fullname" . }}-scheduler
+  labels:
+    app: {{ template "pinta.fullname" . }}-scheduler
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ template "pinta.fullname" . }}-scheduler
+  template:
+    metadata:
+      labels:
+        app: {{ template "pinta.fullname" . }}-scheduler
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/path: /metrics
+        prometheus.io/port: "8080"
+    spec:
+      serviceAccountName: {{ template "pinta.fullname" . }}-scheduler-serviceaccount
+      containers:
+        - name: {{ template "pinta.fullname" . }}-scheduler
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/pinta-scheduler
+          args:
+            - --logtostderr
+            - --scheduler-conf=/pinta.scheduler/pinta-scheduler.conf
+            - -v=4
+            - 2>&1
+          ports:
+            - containerPort: 8080
+              name: metrics
+              protocol: TCP
+          volumeMounts:
+            - name: scheduler-config
+              mountPath: /pinta.scheduler
+      volumes:
+        - name: scheduler-config
+          configMap:
+            name: {{ template "pinta.fullname" . }}-scheduler-configmap

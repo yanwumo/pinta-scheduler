@@ -1,0 +1,21 @@
+image:
+  repository: yanwumo/pinta-scheduler
+  tag: latest
+  pullPolicy: Always
+pv:
+  path: /mydata
+
+nfs-server-provisioner:
+  nameOverride: provisioner
+  storageClass:
+    create: true
+    name: pinta
+  nodeSelector:
+    node-role.kubernetes.io/master: ""
+  tolerations:
+    - effect: NoSchedule
+      key: node-role.kubernetes.io/master
+  persistence:
+    enabled: true
+    storageClass: "-"
+    size: 400Gi
